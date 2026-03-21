@@ -1,4 +1,4 @@
-const CACHE_NAME = "wedding-hall-search-v20260321app7";
+const CACHE_NAME = "wedding-hall-search-v20260322app8";
 const APP_SHELL_FILES = [
   "./",
   "./index.html",
@@ -20,7 +20,8 @@ const APP_SHELL_FILES = [
   "./assets/icons/apple-touch-icon-152.png",
   "./apple-touch-icon.png",
   "./apple-touch-icon-167x167.png",
-  "./apple-touch-icon-152x152.png"
+  "./apple-touch-icon-152x152.png",
+  "./weddingpick-touch-icon.png"
 ];
 
 self.addEventListener("install", (event) => {
