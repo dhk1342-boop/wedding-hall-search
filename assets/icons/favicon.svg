@@ -1,18 +1,41 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="웨딩홀픽 아이콘">
   <defs>
-    <linearGradient id="bg" x1="10%" x2="90%" y1="6%" y2="94%">
-      <stop offset="0%" stop-color="#1d664e" />
-      <stop offset="100%" stop-color="#0b3c2c" />
+    <radialGradient id="bgGlow" cx="26%" cy="18%" r="82%">
+      <stop offset="0%" stop-color="#2f775d"/>
+      <stop offset="58%" stop-color="#174d3b"/>
+      <stop offset="100%" stop-color="#0b2f23"/>
+    </radialGradient>
+    <linearGradient id="goldMain" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff6c8"/>
+      <stop offset="32%" stop-color="#f8da87"/>
+      <stop offset="68%" stop-color="#d9a744"/>
+      <stop offset="100%" stop-color="#fff2b7"/>
     </linearGradient>
-    <linearGradient id="gold" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#f5de9d" />
-      <stop offset="100%" stop-color="#c69542" />
+    <linearGradient id="goldEdge" x1="0%" x2="100%" y1="0%" y2="0%">
+      <stop offset="0%" stop-color="#8f6322"/>
+      <stop offset="100%" stop-color="#f4db8f"/>
     </linearGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#071c15" flood-opacity="0.45"/>
+    </filter>
+    <filter id="goldGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.6" flood-color="#ffe69d" flood-opacity="0.85"/>
+    </filter>
   </defs>
-  <rect width="128" height="128" rx="32" fill="url(#bg)" />
-  <circle cx="64" cy="94" r="24" fill="rgba(255,228,170,0.09)" />
-  <path d="M34 32h10l20 52 18-52h10L69 95h-9L34 32z" fill="url(#gold)"/>
-  <ellipse cx="60" cy="74" rx="38" ry="20" fill="none" stroke="url(#gold)" stroke-width="5" transform="rotate(-10 60 74)"/>
-  <path d="M82 34c7 0 14 5 14 14 0 8-5 13-10 16" fill="none" stroke="url(#gold)" stroke-width="5" stroke-linecap="round"/>
-  <path d="M92 22l4 6 7 2-5 5 1 8-7-4-7 4 1-8-5-5 7-2 4-6z" fill="url(#gold)"/>
+  <rect width="128" height="128" rx="30" fill="url(#bgGlow)" />
+  <path d="M31 100c10-24 29-37 55-44" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="8" stroke-linecap="round"/>
+  <g filter="url(#softShadow)">
+    <path d="M29 45h12l12 42 12-30 12 30 12-42h11L86 96H74L65 69 54 96H42L29 45z" fill="url(#goldMain)" stroke="url(#goldEdge)" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M23 83c12-18 31-26 64-28 12 0 21 3 29 10" fill="none" stroke="url(#goldMain)" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M24 84c8 13 29 16 55 15 21-1 30-7 37-18" fill="none" stroke="url(#goldMain)" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M86 62l12-25" fill="none" stroke="url(#goldMain)" stroke-width="5" stroke-linecap="round"/>
+    <path d="M94 34c7 0 11 5 11 11-4 0-9-1-12-5-2-3-2-4 1-6z" fill="url(#goldMain)"/>
+    <path d="M102 33c6 0 10 4 10 10-4 0-8-1-11-4-2-3-2-4 1-6z" fill="url(#goldMain)"/>
+    <path d="M99 45c7 0 11 4 12 9-6 1-11-1-14-5-1-2 0-3 2-4z" fill="url(#goldMain)"/>
+  </g>
+  <g filter="url(#goldGlow)">
+    <path d="M101 26l2.4 4.8 5.4.8-3.9 3.8.9 5.3-4.8-2.5-4.7 2.5.8-5.3-3.8-3.8 5.4-.8 2.3-4.8z" fill="#fff8d2"/>
+    <path d="M26 74l1.5 3 3.3.5-2.4 2.3.6 3.3-3-1.5-2.9 1.5.5-3.3-2.4-2.3 3.3-.5 1.5-3z" fill="#fff6ca"/>
+    <path d="M88 100l1.6 3.2 3.5.5-2.5 2.4.6 3.4-3.2-1.6-3.1 1.6.6-3.4-2.5-2.4 3.5-.5 1.5-3.2z" fill="#fff6ca"/>
+  </g>
 </svg>
