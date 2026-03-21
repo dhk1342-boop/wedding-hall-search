@@ -379,7 +379,308 @@ const saveFavoriteEntries = () => {
   }
 };
 
+const isFavoriteHall = (hall) => favoriteEntries.some((entry) => entry.favoriteKey === getFavoriteKey(hall));
 
+const toggleFavoriteHall = (hall) => {
+  const favoriteKey = getFavoriteKey(hall);
+  if (!favoriteKey) {
+    return;
+  }
+
+  if (isFavoriteHall(hall)) {
+    favoriteEntries = favoriteEntries.filter((entry) => entry.favoriteKey !== favoriteKey);
+  } else {
+    favoriteEntries = [getHallSnapshot(hall), ...favoriteEntries.filter((entry) => entry.favoriteKey !== favoriteKey)];
+  }
+
+  saveFavoriteEntries();
+  update();
+};
+
+const toggleFavoriteHallByKey = (hallKey) => {
+  if (!hallKey) {
+    return;
+  }
+
+  const existingFavorite = favoriteEntries.find((entry) => entry.favoriteKey === hallKey);
+  if (existingFavorite) {
+    favoriteEntries = favoriteEntries.filter((entry) => entry.favoriteKey !== hallKey);
+    saveFavoriteEntries();
+    update();
+    return;
+  }
+
+  const matchedHall = halls.find((hall) => buildHallKey(hall) === hallKey) || builtinHalls.find((hall) => buildHallKey(hall) === hallKey);
+  if (!matchedHall) {
+    return;
+  }
+
+  favoriteEntries = [getHallSnapshot(matchedHall), ...favoriteEntries];
+  saveFavoriteEntries();
+  update();
+};
+
+const clearAllFavorites = () => {
+  favoriteEntries = [];
+  saveFavoriteEntries();
+  update();
+};
+
+const getFavoriteHalls = () => [...favoriteEntries];
+
+const getHallSourceNote = (hall) => String(hall.tags || hall.memo || "").trim();
+
+const renderSourceNote = (hall) => {
+  const note = getHallSourceNote(hall);
+  if (!note) {
+    return "";
+  }
+
+  return `<p class="card-note">${sanitizeText(note)}</p>`;
+};
+
+const renderUserMemoField = (hall) => `
+  <label class="memo-section">
+    <span class="memo-label">내 메모</span>
+    <textarea class="memo-textarea" data-memo-key="${sanitizeText(getFavoriteKey(hall))}" placeholder="이 웨딩홀에 대한 메모를 남겨보세요.">${sanitizeText(getUserMemo(hall))}</textarea>
+    <small class="memo-help">메모는 이 기기에 자동 저장되며 업데이트 후에도 유지됩니다.</small>
+  </label>
+`;
+
+const renderFavoriteButton = (hall, className = "") => {
+  const active = isFavoriteHall(hall);
+  const label = active ? "즐겨찾기 해제" : "즐겨찾기 추가";
+  const classes = `favorite-button ${className} ${active ? "is-active" : ""}`.trim();
+
+  return `
+    <button
+      type="button"
+      class="${classes}"
+      data-favorite-key="${sanitizeText(getFavoriteKey(hall))}"
+      aria-pressed="${active}"
+      aria-label="${label}"
+      title="${label}"
+    >
+      <span aria-hidden="true">${active ? "★" : "☆"}</span>
+    </button>
+  `;
+};
+
+const mergeHallRecord = (existing, incoming) => {
+  const merged = { ...existing };
+
+  Object.entries(incoming).forEach(([key, value]) => {
+    if (hasMeaningfulValue(value)) {
+      merged[key] = value;
+    }
+  });
+
+  merged.id = existing.id ?? incoming.id ?? null;
+  return merged;
+};
+
+const mergeHallDatasets = (baseHalls, additions) => {
+  const merged = [...baseHalls];
+  const indexByKey = new Map();
+  let maxId = merged.reduce((max, hall) => Math.max(max, hall.id ?? 0), 0);
+  let addedCount = 0;
+  let updatedCount = 0;
+
+  merged.forEach((hall, index) => {
+    indexByKey.set(buildHallKey(hall), index);
+  });
+
+  additions.forEach((hall) => {
+    if (!String(hall.name ?? "").trim()) {
+      return;
+    }
+
+    const key = buildHallKey(hall);
+    const existingIndex = indexByKey.get(key);
+
+    if (existingIndex !== undefined) {
+      merged[existingIndex] = mergeHallRecord(merged[existingIndex], hall);
+      updatedCount += 1;
+      return;
+    }
+
+    maxId += 1;
+    const nextHall = { ...hall, id: hall.id ?? maxId };
+    merged.push(nextHall);
+    indexByKey.set(key, merged.length - 1);
+    addedCount += 1;
+  });
+
+  return { halls: merged, addedCount, updatedCount };
+};
+
+const getEstimatedTotalCost = (hall, guestCount) => {
+  const effectiveGuests = getEstimateGuestCount(hall, guestCount);
+  if (!effectiveGuests || !hall.mealPrice) {
+    return null;
+  }
+
+  return (
+    effectiveGuests * hall.mealPrice +
+    (hall.rentPrice ?? 0) +
+    (hall.stylingPrice ?? 0) +
+    (hall.flowerPrice ?? 0)
+  );
+};
+
+const getCostFormulaLabel = (hall, guestCount) => {
+  const effectiveGuests = getEstimateGuestCount(hall, guestCount);
+  if (!effectiveGuests || !hall.mealPrice) {
+    return "산출 정보 부족";
+  }
+
+  const parts = [`${numberFormatter.format(effectiveGuests)}명 x ${formatMoney(hall.mealPrice)}`];
+
+  if (hall.rentPrice) {
+    parts.push(`대관료 ${formatMoney(hall.rentPrice)}`);
+  }
+  if (hall.stylingPrice) {
+    parts.push(`연출료 ${formatMoney(hall.stylingPrice)}`);
+  }
+  if (hall.flowerPrice) {
+    parts.push(`꽃장식 ${formatMoney(hall.flowerPrice)}`);
+  }
+
+  return parts.join(" + ");
+};
+
+const getFilters = () => ({
+  mealMax: Number(mealPriceInput.value) || null,
+  guests: Number(guestCountInput.value) || null,
+  rentMax: Number(rentPriceInput.value) || null,
+  district: districtSelect.value,
+  sort: sortSelect.value,
+});
+
+const matchesFilters = (hall, filters) => {
+  if (filters.mealMax && (!hall.mealPrice || hall.mealPrice > filters.mealMax)) {
+    return false;
+  }
+
+  if (filters.guests) {
+    if (!hall.minimumGuarantee || hall.minimumGuarantee > filters.guests) {
+      return false;
+    }
+    if (hall.maxCapacity && hall.maxCapacity < filters.guests) {
+      return false;
+    }
+  }
+
+  if (filters.rentMax && (!hall.rentPrice || hall.rentPrice > filters.rentMax)) {
+    return false;
+  }
+
+  if (filters.district && hall.district !== filters.district) {
+    return false;
+  }
+
+  if (filters.sort === "toneBright" && !matchesHallTone(hall, "밝은")) {
+    return false;
+  }
+
+  if (filters.sort === "toneDark" && !matchesHallTone(hall, "어두운")) {
+    return false;
+  }
+
+  if (filters.sort === "toneMixed" && !matchesHallTone(hall, "혼합")) {
+    return false;
+  }
+
+  return true;
+};
+
+const sortHalls = (items, filters) => {
+  const sorted = [...items];
+
+  switch (filters.sort) {
+    case "mealAsc":
+      sorted.sort((a, b) => (a.mealPrice ?? Infinity) - (b.mealPrice ?? Infinity));
+      break;
+    case "guaranteeAsc":
+      sorted.sort((a, b) => (a.minimumGuarantee ?? Infinity) - (b.minimumGuarantee ?? Infinity));
+      break;
+    case "rentAsc":
+      sorted.sort((a, b) => (a.rentPrice ?? Infinity) - (b.rentPrice ?? Infinity));
+      break;
+    case "totalAsc":
+      sorted.sort(
+        (a, b) => (getEstimatedTotalCost(a, filters.guests) ?? Infinity) - (getEstimatedTotalCost(b, filters.guests) ?? Infinity)
+      );
+      break;
+    case "toneBright":
+    case "toneDark":
+    case "toneMixed":
+    default:
+      sorted.sort(
+        (a, b) => (getEstimatedTotalCost(a, filters.guests) ?? Infinity) - (getEstimatedTotalCost(b, filters.guests) ?? Infinity)
+      );
+      break;
+  }
+
+  return sorted;
+};
+
+const buildSummary = (filters, results) => {
+  const parts = [];
+
+  if (filters.mealMax) {
+    parts.push(`식대 ${formatMoney(filters.mealMax)} 이하`);
+  }
+  if (filters.guests) {
+    parts.push(`하객 ${formatCount(filters.guests)} 기준 가능`);
+  }
+  if (filters.rentMax) {
+    parts.push(`대관료 ${formatMoney(filters.rentMax)} 이하`);
+  }
+  if (filters.district) {
+    parts.push(`${filters.district} 한정`);
+  }
+
+  if (filters.sort === "toneBright") {
+    parts.push("밝은홀만");
+  }
+
+  if (filters.sort === "toneDark") {
+    parts.push("어두운홀만");
+  }
+
+  if (filters.sort === "toneMixed") {
+    parts.push("혼합홀만");
+  }
+
+  if (!parts.length) {
+    return `전체 ${halls.length}개 웨딩홀을 보고 있습니다. 조건을 넣으면 식대, 보증인원, 대관료, 총비용 기준으로 바로 추려집니다.`;
+  }
+
+  return `${parts.join(" / ")} 조건으로 ${results.length}개 웨딩홀이 검색되었습니다.`;
+};
+
+const rebuildDistrictOptions = () => {
+  const selected = districtSelect.value;
+  const districts = [...new Set(halls.map((hall) => hall.district).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
+
+  districtSelect.innerHTML = '<option value="">전체</option>';
+  districts.forEach((district) => {
+    const option = document.createElement("option");
+    option.value = district;
+    option.textContent = district;
+    districtSelect.append(option);
+  });
+
+  if (districts.includes(selected)) {
+    districtSelect.value = selected;
+  }
+};
+
+favoriteEntries = loadFavoriteEntries();
+if (shouldPersistMigratedFavorites && favoriteEntries.length) {
+  saveFavoriteEntries();
+}
 memoByHallKey = loadUserMemos();
 
 const renderFavorites = (items, guestCount) => {
