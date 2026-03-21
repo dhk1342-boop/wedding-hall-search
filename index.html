@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>웨딩홀 비교기</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <h1>서울 웨딩홀 비교 검색기</h1>
+
+          <div class="hero-actions">
+            <label class="upload-button" for="excelUpload">엑셀 업로드</label>
+            <input id="excelUpload" type="file" accept=".xlsx" hidden />
+            <button id="reloadBuiltinButton" type="button" class="secondary-button">기본 데이터 다시 불러오기</button>
+            <div class="source-pill">
+              <span class="source-dot"></span>
+              <span id="dataSourceLabel">기본 내장 데이터 사용 중</span>
+            </div>
+          </div>
+
+          <p id="uploadStatus" class="upload-status">
+            업로드 없이도 바로 사용할 수 있습니다. 수정한 파일이 있으면 `.xlsx`를 선택하세요.
+          </p>
+        </div>
+
+        <div class="hero-note">
+          <p>빠른 기준</p>
+          <strong>식대 평균가 이하</strong>
+          <strong>최소보증인원 이하</strong>
+          <strong>대관료 이하</strong>
+          <strong>하객 수 기준 총비용 계산</strong>
+        </div>
+      </header>
+
+      <main class="layout">
+        <aside class="filters">
+          <section class="panel filter-panel">
+            <div class="panel-head">
+              <h2>조건 입력</h2>
+              <button id="resetButton" type="button" class="ghost-button">초기화</button>
+            </div>
+
+            <label class="field">
+              <span>식대 최대 금액</span>
+              <div class="input-row">
+                <input id="mealPriceInput" type="number" min="0" step="1000" placeholder="예: 120000" />
+                <span>원</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span>내 하객 수 기준</span>
+              <div class="input-row">
+                <input id="guestCountInput" type="number" min="0" step="10" placeholder="예: 250" />
+                <span>명</span>
+              </div>
+              <small>총비용 계산은 입력한 하객 수 기준으로 진행합니다. 비워두면 각 홀의 최소보증인원을 기준값으로 사용합니다.</small>
+            </label>
+
+            <label class="field">
+              <span>대관료 최대 금액</span>
+              <div class="input-row">
+                <input id="rentPriceInput" type="number" min="0" step="100000" placeholder="예: 7000000" />
+                <span>원</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span>지역</span>
+              <select id="districtSelect">
+                <option value="">전체</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>정렬</span>
+              <select id="sortSelect">
+                <option value="score">추천순</option>
+                <option value="totalAsc">총비용 낮은순</option>
+                <option value="mealAsc">식대 낮은순</option>
+                <option value="guaranteeAsc">최소보증인원 낮은순</option>
+                <option value="rentAsc">대관료 낮은순</option>
+              </select>
+            </label>
+          </section>
+
+          <section class="panel stats-panel">
+            <h2>검색 현황</h2>
+            <div class="stat-grid">
+              <div>
+                <span class="stat-label">전체 홀</span>
+                <strong id="totalCount">0</strong>
+              </div>
+              <div>
+                <span class="stat-label">조건 일치</span>
+                <strong id="resultCount">0</strong>
+              </div>
+              <div>
+                <span class="stat-label">평균 식대</span>
+                <strong id="avgMealPrice">-</strong>
+              </div>
+              <div>
+                <span class="stat-label">평균 대관료</span>
+                <strong id="avgRentPrice">-</strong>
+              </div>
+              <div>
+                <span class="stat-label">평균 총비용</span>
+                <strong id="avgTotalCost">-</strong>
+              </div>
+              <div>
+                <span class="stat-label">최저 총비용</span>
+                <strong id="minTotalCost">-</strong>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <section class="results">
+          <div class="panel summary-panel">
+            <div>
+              <h2>추천 웨딩홀</h2>
+              <p id="activeSummary">조건을 입력하면 결과가 바로 갱신됩니다.</p>
+            </div>
+            <div class="summary-highlight">
+              <span>총비용 기준</span>
+              <strong id="pricingBasis">최소보증인원 기준</strong>
+            </div>
+          </div>
+
+          <section class="panel cost-info-panel">
+            <div>
+              <h2>예상 총비용 산출 방식</h2>
+              <p id="costFormulaText">총비용 = 기준 인원 x 식대 + 대관료 + 연출료 + 꽃장식</p>
+            </div>
+            <div class="cost-info-badges">
+              <span id="costBasisBadge">기준 인원: 최소보증인원</span>
+              <span>비용 없는 항목은 0원 처리</span>
+            </div>
+          </section>
+
+          <div id="cardList" class="card-list"></div>
+
+          <section class="panel table-panel">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>웨딩홀</th>
+                    <th>구</th>
+                    <th>식대 평균가</th>
+                    <th>최소보증인원</th>
+                    <th>최대수용인원</th>
+                    <th>대관료</th>
+                    <th>산출식</th>
+                    <th>예상 총비용</th>
+                    <th>링크</th>
+                  </tr>
+                </thead>
+                <tbody id="resultTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
