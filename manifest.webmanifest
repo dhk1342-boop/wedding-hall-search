@@ -1,8 +1,8 @@
 {
-  "name": "웨딩홀 비교기",
-  "short_name": "웨딩홀 비교기",
-  "description": "서울 웨딩홀의 식대, 최소보증인원, 대관료, 예상 총비용을 앱처럼 빠르게 비교하는 검색기",
-  "start_url": "./index.html?v=20260321app2",
+  "name": "웨딩홀픽",
+  "short_name": "웨딩홀픽",
+  "description": "서울 웨딩홀의 식대, 최소보증인원, 대관료, 예상 총비용을 앱처럼 빠르게 비교하는 웨딩홀픽",
+  "start_url": "./index.html?v=20260321app3",
   "display": "standalone",
   "background_color": "#f3e6d6",
   "theme_color": "#f3e6d6",
