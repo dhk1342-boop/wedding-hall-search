@@ -38,17 +38,24 @@ const resultTableBody = document.querySelector("#resultTableBody");
 const FAVORITES_STORAGE_KEY = "weddingpick-favorites";
 
 let pendingUpdateRegistration = null;
-let favoriteHallKeys = [];
+let favoriteEntries = [];
+let shouldPersistMigratedFavorites = false;
 
 const numberFormatter = new Intl.NumberFormat("ko-KR");
 const textDecoder = new TextDecoder("utf-8");
 
 const formatMoney = (value) => (typeof value === "number" && Number.isFinite(value) ? `${numberFormatter.format(value)}원` : "-");
 const formatCount = (value) => (typeof value === "number" && Number.isFinite(value) ? `${numberFormatter.format(value)}명` : "-");
+const formatHallCount = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return `${numberFormatter.format(value)}개`;
+  }
 
-const getRecommendationValue = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : -1;
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  return "-";
 };
 
 const parseIntValue = (value) => {
@@ -89,6 +96,20 @@ const sanitizeText = (value) => String(value ?? "").replace(/[&<>"']/g, (char) =
   "'": "&#39;",
 }[char]));
 
+const getDisplayText = (value, fallback = "-") => {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return fallback;
+};
+
+const matchesHallTone = (hall, toneKeyword) => String(hall.hallTone || "").includes(toneKeyword);
+
 const getEstimateGuestCount = (hall, guestCount) => {
   if (guestCount) {
     return guestCount;
@@ -101,69 +122,162 @@ const buildHallKey = (hall) =>
     .map((value) => String(value ?? "").trim().toLowerCase())
     .join("::");
 
-const loadFavoriteHallKeys = () => {
+const getFavoriteKey = (hall) => String(hall?.favoriteKey || buildHallKey(hall)).trim();
+
+const buildFavoriteLookup = () => {
+  const lookup = new Map();
+  [...halls, ...builtinHalls].forEach((hall) => {
+    lookup.set(buildHallKey(hall), hall);
+  });
+  return lookup;
+};
+
+const getHallSnapshot = (hall) => ({
+  favoriteKey: getFavoriteKey(hall),
+  id: hall.id ?? null,
+  name: hall.name ?? "",
+  district: hall.district ?? "",
+  address: hall.address ?? "",
+  hallType: hall.hallType ?? "",
+  hallTone: hall.hallTone ?? "",
+  ceremonyType: hall.ceremonyType ?? "",
+  ceremonyTime: hall.ceremonyTime ?? "",
+  hallCount: hall.hallCount ?? null,
+  menu: hall.menu ?? "",
+  mealPrice: hall.mealPrice ?? null,
+  mealStartPrice: hall.mealStartPrice ?? null,
+  mealAveragePrice: hall.mealAveragePrice ?? null,
+  mealRange: hall.mealRange ?? "",
+  minimumGuarantee: hall.minimumGuarantee ?? null,
+  maxCapacity: hall.maxCapacity ?? null,
+  rentPrice: hall.rentPrice ?? null,
+  baseRentPrice: hall.baseRentPrice ?? null,
+  minimumRentPrice: hall.minimumRentPrice ?? null,
+  stylingPrice: hall.stylingPrice ?? null,
+  flowerPrice: hall.flowerPrice ?? null,
+  parking: hall.parking ?? "",
+  subwayAccess: hall.subwayAccess ?? "",
+  homepage: hall.homepage ?? "",
+  naverMap: hall.naverMap ?? "",
+  memo: hall.memo ?? "",
+  zone: hall.zone ?? "",
+  tags: hall.tags ?? "",
+  budgetBand: hall.budgetBand ?? "",
+});
+
+const loadFavoriteEntries = () => {
   if (typeof window.localStorage === "undefined") {
     return [];
   }
 
   try {
+    shouldPersistMigratedFavorites = false;
     const parsed = JSON.parse(window.localStorage.getItem(FAVORITES_STORAGE_KEY) || "[]");
     if (!Array.isArray(parsed)) {
       return [];
     }
 
-    const uniqueKeys = [];
-    parsed.forEach((value) => {
-      const hallKey = String(value || "").trim();
-      if (hallKey && !uniqueKeys.includes(hallKey)) {
-        uniqueKeys.push(hallKey);
+    const hallLookup = buildFavoriteLookup();
+    const uniqueEntries = [];
+
+    parsed.forEach((item) => {
+      let snapshot = null;
+
+      if (typeof item === "string") {
+        const matchedHall = hallLookup.get(item);
+        if (matchedHall) {
+          snapshot = getHallSnapshot(matchedHall);
+          shouldPersistMigratedFavorites = true;
+        }
+      } else if (item && typeof item === "object") {
+        const sourceHall = item.hall && typeof item.hall === "object" ? item.hall : item;
+        const favoriteKey = String(item.key || sourceHall.favoriteKey || buildHallKey(sourceHall)).trim();
+        if (favoriteKey) {
+          snapshot = {
+            ...getHallSnapshot(sourceHall),
+            favoriteKey,
+          };
+        }
+      }
+
+      if (!snapshot || !snapshot.favoriteKey) {
+        return;
+      }
+
+      const existingIndex = uniqueEntries.findIndex((entry) => entry.favoriteKey === snapshot.favoriteKey);
+      if (existingIndex === -1) {
+        uniqueEntries.push(snapshot);
+      } else {
+        uniqueEntries[existingIndex] = snapshot;
       }
     });
-    return uniqueKeys;
+
+    return uniqueEntries;
   } catch (error) {
     return [];
   }
 };
 
-const saveFavoriteHallKeys = () => {
+const saveFavoriteEntries = () => {
   if (typeof window.localStorage === "undefined") {
     return;
   }
 
   try {
-    window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoriteHallKeys));
+    window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoriteEntries));
   } catch (error) {
     // Ignore storage failures so the main experience keeps working.
   }
 };
 
-const isFavoriteHall = (hall) => favoriteHallKeys.includes(buildHallKey(hall));
+const isFavoriteHall = (hall) => favoriteEntries.some((entry) => entry.favoriteKey === getFavoriteKey(hall));
+
+const toggleFavoriteHall = (hall) => {
+  const favoriteKey = getFavoriteKey(hall);
+  if (!favoriteKey) {
+    return;
+  }
+
+  if (isFavoriteHall(hall)) {
+    favoriteEntries = favoriteEntries.filter((entry) => entry.favoriteKey !== favoriteKey);
+  } else {
+    favoriteEntries = [getHallSnapshot(hall), ...favoriteEntries.filter((entry) => entry.favoriteKey !== favoriteKey)];
+  }
+
+  saveFavoriteEntries();
+  update();
+};
 
 const toggleFavoriteHallByKey = (hallKey) => {
   if (!hallKey) {
     return;
   }
 
-  if (favoriteHallKeys.includes(hallKey)) {
-    favoriteHallKeys = favoriteHallKeys.filter((key) => key !== hallKey);
-  } else {
-    favoriteHallKeys = [hallKey, ...favoriteHallKeys.filter((key) => key !== hallKey)];
+  const existingFavorite = favoriteEntries.find((entry) => entry.favoriteKey === hallKey);
+  if (existingFavorite) {
+    favoriteEntries = favoriteEntries.filter((entry) => entry.favoriteKey !== hallKey);
+    saveFavoriteEntries();
+    update();
+    return;
   }
 
-  saveFavoriteHallKeys();
+  const matchedHall = halls.find((hall) => buildHallKey(hall) === hallKey) || builtinHalls.find((hall) => buildHallKey(hall) === hallKey);
+  if (!matchedHall) {
+    return;
+  }
+
+  favoriteEntries = [getHallSnapshot(matchedHall), ...favoriteEntries];
+  saveFavoriteEntries();
   update();
 };
 
 const clearAllFavorites = () => {
-  favoriteHallKeys = [];
-  saveFavoriteHallKeys();
+  favoriteEntries = [];
+  saveFavoriteEntries();
   update();
 };
 
-const getFavoriteHalls = () => {
-  const hallsByKey = new Map(halls.map((hall) => [buildHallKey(hall), hall]));
-  return favoriteHallKeys.map((hallKey) => hallsByKey.get(hallKey)).filter(Boolean);
-};
+const getFavoriteHalls = () => [...favoriteEntries];
 
 const renderFavoriteButton = (hall, className = "") => {
   const active = isFavoriteHall(hall);
@@ -174,7 +288,7 @@ const renderFavoriteButton = (hall, className = "") => {
     <button
       type="button"
       class="${classes}"
-      data-favorite-key="${sanitizeText(buildHallKey(hall))}"
+      data-favorite-key="${sanitizeText(getFavoriteKey(hall))}"
       aria-pressed="${active}"
       aria-label="${label}"
       title="${label}"
@@ -297,6 +411,18 @@ const matchesFilters = (hall, filters) => {
     return false;
   }
 
+  if (filters.sort === "toneBright" && !matchesHallTone(hall, "밝은")) {
+    return false;
+  }
+
+  if (filters.sort === "toneDark" && !matchesHallTone(hall, "어두운")) {
+    return false;
+  }
+
+  if (filters.sort === "toneMixed" && !matchesHallTone(hall, "혼합")) {
+    return false;
+  }
+
   return true;
 };
 
@@ -318,9 +444,13 @@ const sortHalls = (items, filters) => {
         (a, b) => (getEstimatedTotalCost(a, filters.guests) ?? Infinity) - (getEstimatedTotalCost(b, filters.guests) ?? Infinity)
       );
       break;
-    case "score":
+    case "toneBright":
+    case "toneDark":
+    case "toneMixed":
     default:
-      sorted.sort((a, b) => getRecommendationValue(b.recommendationScore) - getRecommendationValue(a.recommendationScore));
+      sorted.sort(
+        (a, b) => (getEstimatedTotalCost(a, filters.guests) ?? Infinity) - (getEstimatedTotalCost(b, filters.guests) ?? Infinity)
+      );
       break;
   }
 
@@ -341,6 +471,18 @@ const buildSummary = (filters, results) => {
   }
   if (filters.district) {
     parts.push(`${filters.district} 한정`);
+  }
+
+  if (filters.sort === "toneBright") {
+    parts.push("밝은홀만");
+  }
+
+  if (filters.sort === "toneDark") {
+    parts.push("어두운홀만");
+  }
+
+  if (filters.sort === "toneMixed") {
+    parts.push("혼합홀만");
   }
 
   if (!parts.length) {
@@ -367,10 +509,13 @@ const rebuildDistrictOptions = () => {
   }
 };
 
-favoriteHallKeys = loadFavoriteHallKeys();
+favoriteEntries = loadFavoriteEntries();
+if (shouldPersistMigratedFavorites && favoriteEntries.length) {
+  saveFavoriteEntries();
+}
 
 const renderFavorites = (items, guestCount) => {
-  const storedFavoriteCount = favoriteHallKeys.length;
+  const storedFavoriteCount = favoriteEntries.length;
 
   favoriteCountBadge.textContent = `${numberFormatter.format(storedFavoriteCount)}개`;
   clearFavoritesButton.hidden = storedFavoriteCount === 0;
@@ -386,21 +531,7 @@ const renderFavorites = (items, guestCount) => {
     return;
   }
 
-  if (!items.length) {
-    favoriteSummary.textContent = "저장된 즐겨찾기는 있지만 현재 불러온 데이터에서는 일치하는 웨딩홀을 찾지 못했습니다.";
-    favoriteList.innerHTML = `
-      <div class="empty-state favorite-empty-state">
-        현재 데이터셋에 표시할 즐겨찾기 항목이 없습니다.<br />
-        기본 데이터를 다시 불러오거나 다른 업로드 파일을 확인해보세요.
-      </div>
-    `;
-    return;
-  }
-
-  favoriteSummary.textContent =
-    items.length === storedFavoriteCount
-      ? `총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀을 찜해두었습니다. 검색 조건과 상관없이 여기서 다시 비교할 수 있어요.`
-      : `총 ${numberFormatter.format(storedFavoriteCount)}개를 저장했고, 현재 데이터에서는 ${numberFormatter.format(items.length)}개가 표시됩니다.`;
+  favoriteSummary.textContent = `총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀을 찜해두었습니다. 이후 데이터가 업데이트되어도 이 목록은 저장 당시 정보 기준으로 유지됩니다.`;
 
   favoriteList.innerHTML = items
     .map((hall) => `
@@ -419,6 +550,12 @@ const renderFavorites = (items, guestCount) => {
         <div class="favorite-card-price">
           <span>예상 총비용</span>
           <strong>${formatMoney(getEstimatedTotalCost(hall, guestCount))}</strong>
+        </div>
+
+        <div class="hall-info-strip">
+          <span><strong>예식형태</strong>${sanitizeText(getDisplayText(hall.ceremonyType, "정보 없음"))}</span>
+          <span><strong>예식시간</strong>${sanitizeText(getDisplayText(hall.ceremonyTime, "정보 없음"))}</span>
+          <span><strong>홀 수</strong>${sanitizeText(formatHallCount(hall.hallCount))}</span>
         </div>
 
         <div class="favorite-card-meta">
@@ -461,12 +598,17 @@ const renderCards = (items, guestCount) => {
           <div class="card-top">
             <div class="card-top-main">
               <span class="badge">${sanitizeText(hall.zone || "기타")} · ${sanitizeText(hall.hallType || "정보없음")}</span>
-              <span class="badge">추천 ${sanitizeText(hall.recommendationGrade || "-")}</span>
             </div>
             ${renderFavoriteButton(hall, "card-favorite-button")}
           </div>
           <h3>${sanitizeText(hall.name)}</h3>
           <p class="hall-address">${sanitizeText(hall.address || "-")}</p>
+
+          <div class="hall-info-strip">
+            <span><strong>예식형태</strong>${sanitizeText(getDisplayText(hall.ceremonyType, "정보 없음"))}</span>
+            <span><strong>예식시간</strong>${sanitizeText(getDisplayText(hall.ceremonyTime, "정보 없음"))}</span>
+            <span><strong>홀 수</strong>${sanitizeText(formatHallCount(hall.hallCount))}</span>
+          </div>
 
           <div class="featured-price">
             <span class="featured-label">예상 총비용</span>
@@ -504,7 +646,7 @@ const renderTable = (items, guestCount) => {
   if (!items.length) {
     resultTableBody.innerHTML = `
       <tr>
-        <td colspan="9">검색 결과가 없습니다.</td>
+        <td colspan="12">검색 결과가 없습니다.</td>
       </tr>
     `;
     return;
@@ -518,6 +660,9 @@ const renderTable = (items, guestCount) => {
           <span class="table-name">${sanitizeText(hall.name)}</span>
         </td>
         <td>${sanitizeText(hall.district || "-")}</td>
+        <td>${sanitizeText(getDisplayText(hall.ceremonyType, "-"))}</td>
+        <td>${sanitizeText(getDisplayText(hall.ceremonyTime, "-"))}</td>
+        <td>${sanitizeText(formatHallCount(hall.hallCount))}</td>
         <td>${formatMoney(hall.mealPrice)}</td>
         <td>${formatCount(hall.minimumGuarantee)}</td>
         <td>${formatCount(hall.maxCapacity)}</td>
@@ -572,7 +717,7 @@ const resetFilters = () => {
   guestCountInput.value = "";
   rentPriceInput.value = "";
   districtSelect.value = "";
-  sortSelect.value = "score";
+  sortSelect.value = "totalAsc";
   update();
 };
 
@@ -615,6 +760,8 @@ const normalizeRecords = (records) =>
     const mealStartPrice = parseIntValue(item["식대 시작가(원)"]);
     const minimumRentPrice = parseIntValue(item["최소 대관료(원)"]);
     const baseRentPrice = parseIntValue(item["대관료(원)"]);
+    const rawHallCount = item["홀 수"] || item.홀수 || item["홀수(개)"] || "";
+    const parsedHallCount = parseIntValue(rawHallCount);
 
     return {
       id: parseIntValue(item.ID),
@@ -624,6 +771,8 @@ const normalizeRecords = (records) =>
       hallType: item.홀타입 || "",
       hallTone: item["홀톤(밝은/어두운/혼합)"] || "",
       ceremonyType: item.예식형태 || "",
+      ceremonyTime: item.예식시간 || item["예식 시간"] || "",
+      hallCount: parsedHallCount ?? (String(rawHallCount).trim() || null),
       menu: item.메뉴 || "",
       mealPrice: mealAveragePrice ?? mealStartPrice,
       mealStartPrice,
@@ -644,8 +793,6 @@ const normalizeRecords = (records) =>
       zone: item.권역 || "",
       tags: item.분위기태그 || "",
       budgetBand: item.예산밴드 || "",
-      recommendationGrade: item.추천등급 || "",
-      recommendationScore: item.추천점수 || "",
     };
   });
 
