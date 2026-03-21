@@ -1,6 +1,7 @@
 let halls = Array.isArray(window.WEDDING_HALLS) ? [...window.WEDDING_HALLS] : [];
 const builtinHalls = Array.isArray(window.WEDDING_HALLS) ? [...window.WEDDING_HALLS] : [];
 const DEFAULT_WORKBOOK_FILES = ["웨딩홀 정보.xlsx", "seoul_wedding_master_final_pro.xlsx"];
+const TEMPLATE_SHEET_NAME = "웨딩홀_추가양식";
 
 const mealPriceInput = document.querySelector("#mealPriceInput");
 const guestCountInput = document.querySelector("#guestCountInput");
@@ -50,6 +51,8 @@ const parseIntValue = (value) => {
   return Number.isFinite(parsed) ? Math.round(parsed) : null;
 };
 
+const hasMeaningfulValue = (value) => value !== "" && value !== null && value !== undefined;
+
 const getElementsByLocalName = (parent, name) => Array.from(parent.getElementsByTagNameNS("*", name));
 
 const getFirstChildByLocalName = (parent, name) =>
@@ -78,6 +81,59 @@ const getEstimateGuestCount = (hall, guestCount) => {
     return guestCount;
   }
   return hall.minimumGuarantee ?? null;
+};
+
+const buildHallKey = (hall) =>
+  [hall.name, hall.address || hall.district || ""]
+    .map((value) => String(value ?? "").trim().toLowerCase())
+    .join("::");
+
+const mergeHallRecord = (existing, incoming) => {
+  const merged = { ...existing };
+
+  Object.entries(incoming).forEach(([key, value]) => {
+    if (hasMeaningfulValue(value)) {
+      merged[key] = value;
+    }
+  });
+
+  merged.id = existing.id ?? incoming.id ?? null;
+  return merged;
+};
+
+const mergeHallDatasets = (baseHalls, additions) => {
+  const merged = [...baseHalls];
+  const indexByKey = new Map();
+  let maxId = merged.reduce((max, hall) => Math.max(max, hall.id ?? 0), 0);
+  let addedCount = 0;
+  let updatedCount = 0;
+
+  merged.forEach((hall, index) => {
+    indexByKey.set(buildHallKey(hall), index);
+  });
+
+  additions.forEach((hall) => {
+    if (!String(hall.name ?? "").trim()) {
+      return;
+    }
+
+    const key = buildHallKey(hall);
+    const existingIndex = indexByKey.get(key);
+
+    if (existingIndex !== undefined) {
+      merged[existingIndex] = mergeHallRecord(merged[existingIndex], hall);
+      updatedCount += 1;
+      return;
+    }
+
+    maxId += 1;
+    const nextHall = { ...hall, id: hall.id ?? maxId };
+    merged.push(nextHall);
+    indexByKey.set(key, merged.length - 1);
+    addedCount += 1;
+  });
+
+  return { halls: merged, addedCount, updatedCount };
 };
 
 const getEstimatedTotalCost = (hall, guestCount) => {
@@ -456,7 +512,7 @@ const unzipXlsxBuffer = async (buffer) => {
   return files;
 };
 
-const resolveSheetPath = (files, workbookDoc, targetSheetName) => {
+const getWorkbookSheetPaths = (files, workbookDoc) => {
   const relsDoc = xmlToDocument(files.get("xl/_rels/workbook.xml.rels") || "");
   const relationships = new Map();
 
@@ -464,18 +520,18 @@ const resolveSheetPath = (files, workbookDoc, targetSheetName) => {
     relationships.set(rel.getAttribute("Id"), rel.getAttribute("Target"));
   });
 
-  const sheet = getElementsByLocalName(workbookDoc, "sheet").find((node) => node.getAttribute("name") === targetSheetName);
-  if (!sheet) {
-    throw new Error(`'${targetSheetName}' 시트를 찾을 수 없습니다.`);
-  }
+  return new Map(
+    getElementsByLocalName(workbookDoc, "sheet").map((sheet) => {
+      const relationshipId = sheet.getAttribute("r:id") || sheet.getAttributeNS("*", "id");
+      const relativePath = relationships.get(relationshipId);
 
-  const relationshipId = sheet.getAttribute("r:id") || sheet.getAttributeNS("*", "id");
-  const relativePath = relationships.get(relationshipId);
-  if (!relativePath) {
-    throw new Error("시트 경로를 찾을 수 없습니다.");
-  }
+      if (!relativePath) {
+        throw new Error("시트 경로를 찾을 수 없습니다.");
+      }
 
-  return `xl/${relativePath.replace(/^\/?xl\//, "")}`;
+      return [sheet.getAttribute("name"), `xl/${relativePath.replace(/^\/?xl\//, "")}`];
+    })
+  );
 };
 
 const parseSharedStrings = (files) => {
@@ -550,15 +606,26 @@ const loadWorkbookBuffer = async (buffer) => {
   }
 
   const workbookDoc = xmlToDocument(workbookXml);
-  const sheetPath = resolveSheetPath(files, workbookDoc, "Master_60");
+  const sheetPaths = getWorkbookSheetPaths(files, workbookDoc);
+  const targetSheetName = sheetPaths.has("Master_60") ? "Master_60" : sheetPaths.has(TEMPLATE_SHEET_NAME) ? TEMPLATE_SHEET_NAME : null;
+
+  if (!targetSheetName) {
+    throw new Error("Master_60 시트 또는 웨딩홀_추가양식 시트를 찾을 수 없습니다.");
+  }
+
+  const sheetPath = sheetPaths.get(targetSheetName);
   const sheetXml = files.get(sheetPath);
   if (!sheetXml) {
-    throw new Error("Master_60 시트 데이터를 읽을 수 없습니다.");
+    throw new Error(`${targetSheetName} 시트 데이터를 읽을 수 없습니다.`);
   }
 
   const sharedStrings = parseSharedStrings(files);
   const records = parseWorksheetRecords(xmlToDocument(sheetXml), sharedStrings);
-  return normalizeRecords(records);
+  return {
+    halls: normalizeRecords(records),
+    mode: targetSheetName === "Master_60" ? "replace" : "merge",
+    sheetName: targetSheetName,
+  };
 };
 
 const loadWorkbookFile = async (file) => loadWorkbookBuffer(await file.arrayBuffer());
@@ -579,15 +646,15 @@ const tryLoadDefaultWorkbook = async () => {
         continue;
       }
 
-      const workbookHalls = await loadWorkbookBuffer(await response.arrayBuffer());
-      if (!workbookHalls.length) {
+      const workbookData = await loadWorkbookBuffer(await response.arrayBuffer());
+      if (!workbookData.halls.length) {
         continue;
       }
 
-      halls = workbookHalls;
+      halls = workbookData.halls;
       rebuildDistrictOptions();
       dataSourceLabel.textContent = `${fileName} 자동 반영 중`;
-      setSourceStatus(`페이지를 열면서 '${fileName}'을 읽어 ${workbookHalls.length}개 홀을 자동 반영했습니다.`, "is-success");
+      setSourceStatus(`페이지를 열면서 '${fileName}'의 Master_60 시트를 읽어 ${workbookData.halls.length}개 홀을 자동 반영했습니다.`, "is-success");
       update();
       return true;
     } catch (error) {
@@ -607,18 +674,31 @@ const handleExcelUpload = async (event) => {
   setSourceStatus("엑셀을 읽는 중입니다...", "");
 
   try {
-    const uploadedHalls = await loadWorkbookFile(file);
-    if (!uploadedHalls.length) {
+    const workbookData = await loadWorkbookFile(file);
+    if (!workbookData.halls.length) {
       throw new Error("업로드한 파일에서 웨딩홀 데이터를 찾지 못했습니다.");
     }
 
-    halls = uploadedHalls;
+    if (workbookData.mode === "merge") {
+      const mergedResult = mergeHallDatasets(halls, workbookData.halls);
+      halls = mergedResult.halls;
+      rebuildDistrictOptions();
+      dataSourceLabel.textContent = `기존 데이터 + ${file.name} 양식 반영`;
+      setSourceStatus(
+        `'${file.name}' 양식을 반영했습니다. 신규 ${mergedResult.addedCount}개, 업데이트 ${mergedResult.updatedCount}개, 현재 총 ${mergedResult.halls.length}개 홀입니다.`,
+        "is-success"
+      );
+      update();
+      return;
+    }
+
+    halls = workbookData.halls;
     rebuildDistrictOptions();
     dataSourceLabel.textContent = `${file.name} 업로드 데이터 사용 중`;
-    setSourceStatus(`'${file.name}'의 Master_60 시트를 불러왔습니다. 총 ${uploadedHalls.length}개 홀을 반영했습니다.`, "is-success");
+    setSourceStatus(`'${file.name}'의 Master_60 시트를 불러왔습니다. 총 ${workbookData.halls.length}개 홀을 반영했습니다.`, "is-success");
     update();
   } catch (error) {
-    useBuiltinData(error instanceof Error ? error.message : "엑셀 업로드 중 오류가 발생했습니다.", "is-error");
+    setSourceStatus(error instanceof Error ? error.message : "엑셀 업로드 중 오류가 발생했습니다.", "is-error");
   } finally {
     event.target.value = "";
   }
