@@ -1,4 +1,4 @@
-const CACHE_NAME = "wedding-hall-search-v20260322app14";
+const CACHE_NAME = "wedding-hall-search-v20260322app15";
 const APP_SHELL_FILES = [
   "./",
   "./index.html",
