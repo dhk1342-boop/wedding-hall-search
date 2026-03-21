@@ -1,1 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="웨딩홀 비교기 아이콘">
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#f8efe4" />
+      <stop offset="100%" stop-color="#e1c6ac" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#b5543d" />
+      <stop offset="100%" stop-color="#7f3323" />
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="32" fill="url(#bg)" />
+  <path d="M28 46c0-10 8-18 18-18h36c10 0 18 8 18 18v36c0 10-8 18-18 18H46c-10 0-18-8-18-18V46z" fill="none" stroke="url(#accent)" stroke-width="8"/>
+  <path d="M46 42h12l10 18 10-18h12L77 82H67L46 42z" fill="url(#accent)"/>
+  <circle cx="64" cy="91" r="8" fill="#b98d3f"/>
+</svg>
 
