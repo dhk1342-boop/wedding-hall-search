@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="웨딩홀 비교기 앱 아이콘">
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#f9f1e6" />
+      <stop offset="100%" stop-color="#e5cab0" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#b5543d" />
+      <stop offset="100%" stop-color="#7f3323" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#d4b06c" />
+      <stop offset="100%" stop-color="#b98d3f" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="124" fill="url(#bg)" />
+  <circle cx="256" cy="180" r="128" fill="rgba(255,255,255,0.42)" />
+  <path d="M128 190c0-34 28-62 62-62h132c34 0 62 28 62 62v132c0 34-28 62-62 62H190c-34 0-62-28-62-62V190z" fill="none" stroke="url(#accent)" stroke-width="28"/>
+  <path d="M186 162h42l35 67 36-67h41l-57 101c-8 15-18 22-30 22s-22-7-31-22l-56-101z" fill="url(#accent)"/>
+  <path d="M168 332h176" fill="none" stroke="url(#gold)" stroke-linecap="round" stroke-width="24"/>
+  <circle cx="256" cy="356" r="28" fill="url(#gold)"/>
+</svg>
