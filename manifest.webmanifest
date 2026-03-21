@@ -2,7 +2,7 @@
   "name": "웨딩홀픽",
   "short_name": "웨딩홀픽",
   "description": "서울 웨딩홀의 식대, 최소보증인원, 대관료, 예상 총비용을 앱처럼 빠르게 비교하는 웨딩홀픽",
-  "start_url": "./index.html?v=20260321app3",
+  "start_url": "./index.html?v=20260321app5",
   "display": "standalone",
   "background_color": "#f3e6d6",
   "theme_color": "#f3e6d6",
@@ -10,13 +10,13 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "./assets/icons/app-icon.svg",
+      "src": "./assets/icons/app-icon.svg?v=20260321app5",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "./assets/icons/app-icon-maskable.svg",
+      "src": "./assets/icons/app-icon-maskable.svg?v=20260321app5",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
