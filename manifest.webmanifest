@@ -1,0 +1,25 @@
+{
+  "name": "웨딩홀 비교기",
+  "short_name": "웨딩홀 비교기",
+  "description": "서울 웨딩홀의 식대, 최소보증인원, 대관료, 예상 총비용을 비교하는 검색 앱",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4ecdf",
+  "theme_color": "#f4ecdf",
+  "lang": "ko",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./assets/icons/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icons/app-icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
