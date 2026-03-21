@@ -1,4 +1,4 @@
-const CACHE_NAME = "wedding-hall-search-v20260321app5";
+const CACHE_NAME = "wedding-hall-search-v20260321app6";
 const APP_SHELL_FILES = [
   "./",
   "./index.html",
@@ -11,7 +11,13 @@ const APP_SHELL_FILES = [
   "./seoul_wedding_master_final_pro.xlsx",
   "./assets/icons/favicon.svg",
   "./assets/icons/app-icon.svg",
-  "./assets/icons/app-icon-maskable.svg"
+  "./assets/icons/app-icon-maskable.svg",
+  "./assets/icons/app-icon-192.png",
+  "./assets/icons/app-icon-512.png",
+  "./assets/icons/app-icon-maskable-512.png",
+  "./assets/icons/apple-touch-icon-180.png",
+  "./assets/icons/apple-touch-icon-167.png",
+  "./assets/icons/apple-touch-icon-152.png"
 ];
 
 self.addEventListener("install", (event) => {
