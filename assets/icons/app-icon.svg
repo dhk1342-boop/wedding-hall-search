@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="웨딩홀 비교기 앱 아이콘">
   <defs>
-    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#f9f1e6" />
-      <stop offset="100%" stop-color="#e5cab0" />
+    <linearGradient id="bg" x1="8%" x2="92%" y1="6%" y2="94%">
+      <stop offset="0%" stop-color="#fcf6ef" />
+      <stop offset="100%" stop-color="#e4cdb9" />
     </linearGradient>
     <linearGradient id="accent" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#b5543d" />
-      <stop offset="100%" stop-color="#7f3323" />
+      <stop offset="0%" stop-color="#a45542" />
+      <stop offset="100%" stop-color="#6f2d21" />
     </linearGradient>
     <linearGradient id="gold" x1="0%" x2="100%" y1="0%" y2="100%">
       <stop offset="0%" stop-color="#d4b06c" />
@@ -14,9 +14,11 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="124" fill="url(#bg)" />
-  <circle cx="256" cy="180" r="128" fill="rgba(255,255,255,0.42)" />
-  <path d="M128 190c0-34 28-62 62-62h132c34 0 62 28 62 62v132c0 34-28 62-62 62H190c-34 0-62-28-62-62V190z" fill="none" stroke="url(#accent)" stroke-width="28"/>
-  <path d="M186 162h42l35 67 36-67h41l-57 101c-8 15-18 22-30 22s-22-7-31-22l-56-101z" fill="url(#accent)"/>
-  <path d="M168 332h176" fill="none" stroke="url(#gold)" stroke-linecap="round" stroke-width="24"/>
-  <circle cx="256" cy="356" r="28" fill="url(#gold)"/>
+  <rect x="82" y="84" width="348" height="344" rx="96" fill="rgba(255,255,255,0.54)" stroke="rgba(111,45,33,0.1)" stroke-width="6" />
+  <circle cx="256" cy="118" r="26" fill="rgba(255,255,255,0.44)" />
+  <path d="M256 101l11 20 20 11-20 11-11 20-11-20-20-11 20-11 11-20z" fill="url(#gold)" />
+  <path d="M174 298V228c0-46 36-82 82-82s82 36 82 82v70" fill="none" stroke="url(#accent)" stroke-linecap="round" stroke-width="28"/>
+  <path d="M196 326h120" fill="none" stroke="url(#accent)" stroke-linecap="round" stroke-width="28"/>
+  <path d="M168 372h176" fill="none" stroke="url(#gold)" stroke-linecap="round" stroke-width="18"/>
+  <circle cx="256" cy="404" r="22" fill="url(#gold)"/>
 </svg>
