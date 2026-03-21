@@ -1,4 +1,4 @@
-const CACHE_NAME = "wedding-hall-search-v20260322app8";
+const CACHE_NAME = "wedding-hall-search-v20260322app9";
 const APP_SHELL_FILES = [
   "./",
   "./index.html",
@@ -43,6 +43,12 @@ self.addEventListener("activate", (event) => {
       )
     ).then(() => self.clients.claim())
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {
