@@ -656,6 +656,72 @@ select:focus {
   line-height: 1.55;
 }
 
+.memo-section {
+  display: block;
+  margin-top: 14px;
+}
+
+.memo-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.memo-textarea {
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  padding: 12px 14px;
+  border: 1px solid rgba(75, 52, 34, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text);
+  outline: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.memo-textarea:focus {
+  transform: translateY(-1px);
+  border-color: rgba(181, 84, 61, 0.7);
+  box-shadow: 0 0 0 5px rgba(181, 84, 61, 0.08);
+}
+
+.memo-help {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.hall-info-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.hall-info-strip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(75, 52, 34, 0.08);
+  color: var(--text);
+  font-size: 0.87rem;
+}
+
+.hall-info-strip strong {
+  color: var(--accent-deep);
+  font-size: 0.78rem;
+  letter-spacing: -0.01em;
+}
+
 .favorite-card-price {
   margin-top: 16px;
   padding: 14px 16px;
@@ -1276,6 +1342,7 @@ td a {
   .cost-breakdown span,
   .meta span,
   .favorite-card-meta span,
+  .hall-info-strip span,
   .card-links a,
   .badge {
     width: 100%;
