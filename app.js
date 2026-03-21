@@ -36,10 +36,12 @@ const cardList = document.querySelector("#cardList");
 const resultTableBody = document.querySelector("#resultTableBody");
 
 const FAVORITES_STORAGE_KEY = "weddingpick-favorites";
+const MEMOS_STORAGE_KEY = "weddingpick-user-memos";
 
 let pendingUpdateRegistration = null;
 let favoriteEntries = [];
 let shouldPersistMigratedFavorites = false;
+let memoByHallKey = {};
 
 const numberFormatter = new Intl.NumberFormat("ko-KR");
 const textDecoder = new TextDecoder("utf-8");
@@ -56,6 +58,28 @@ const formatHallCount = (value) => {
   }
 
   return "-";
+};
+
+const formatHallCountChip = (value, fallback = "-") => {
+  const formatted = formatHallCount(value);
+  if (formatted === "-") {
+    return fallback;
+  }
+
+  return formatted.endsWith("홀") ? formatted : `${formatted} 홀`;
+};
+
+const formatCeremonyInterval = (value, fallback = "-") => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return `${numberFormatter.format(value)}분`;
+  }
+
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    return fallback;
+  }
+
+  return normalized.endsWith("분") ? normalized : `${normalized}분`;
 };
 
 const parseIntValue = (value) => {
@@ -124,12 +148,69 @@ const buildHallKey = (hall) =>
 
 const getFavoriteKey = (hall) => String(hall?.favoriteKey || buildHallKey(hall)).trim();
 
+const loadUserMemos = () => {
+  if (typeof window.localStorage === "undefined") {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(MEMOS_STORAGE_KEY) || "{}");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+
+    return Object.entries(parsed).reduce((accumulator, [hallKey, memo]) => {
+      const normalizedKey = String(hallKey || "").trim();
+      const normalizedMemo = typeof memo === "string" ? memo : "";
+      if (normalizedKey && normalizedMemo.trim()) {
+        accumulator[normalizedKey] = normalizedMemo;
+      }
+      return accumulator;
+    }, {});
+  } catch (error) {
+    return {};
+  }
+};
+
+const saveUserMemos = () => {
+  if (typeof window.localStorage === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(MEMOS_STORAGE_KEY, JSON.stringify(memoByHallKey));
+  } catch (error) {
+    // Ignore storage failures so the main experience keeps working.
+  }
+};
+
 const buildFavoriteLookup = () => {
   const lookup = new Map();
   [...halls, ...builtinHalls].forEach((hall) => {
     lookup.set(buildHallKey(hall), hall);
   });
   return lookup;
+};
+
+const getUserMemo = (hall) => memoByHallKey[getFavoriteKey(hall)] || "";
+
+const updateUserMemoByKey = (hallKey, memo) => {
+  const normalizedKey = String(hallKey || "").trim();
+  if (!normalizedKey) {
+    return;
+  }
+
+  const nextMemo = String(memo ?? "").replace(/\r\n/g, "\n");
+  const nextMemoMap = { ...memoByHallKey };
+
+  if (nextMemo.trim()) {
+    nextMemoMap[normalizedKey] = nextMemo;
+  } else {
+    delete nextMemoMap[normalizedKey];
+  }
+
+  memoByHallKey = nextMemoMap;
+  saveUserMemos();
 };
 
 const getHallSnapshot = (hall) => ({
@@ -278,6 +359,25 @@ const clearAllFavorites = () => {
 };
 
 const getFavoriteHalls = () => [...favoriteEntries];
+
+const getHallSourceNote = (hall) => String(hall.tags || hall.memo || "").trim();
+
+const renderSourceNote = (hall) => {
+  const note = getHallSourceNote(hall);
+  if (!note) {
+    return "";
+  }
+
+  return `<p class="card-note">${sanitizeText(note)}</p>`;
+};
+
+const renderUserMemoField = (hall) => `
+  <label class="memo-section">
+    <span class="memo-label">내 메모</span>
+    <textarea class="memo-textarea" data-memo-key="${sanitizeText(getFavoriteKey(hall))}" placeholder="이 웨딩홀에 대한 메모를 남겨보세요.">${sanitizeText(getUserMemo(hall))}</textarea>
+    <small class="memo-help">메모는 이 기기에 자동 저장되며 업데이트 후에도 유지됩니다.</small>
+  </label>
+`;
 
 const renderFavoriteButton = (hall, className = "") => {
   const active = isFavoriteHall(hall);
@@ -513,6 +613,7 @@ favoriteEntries = loadFavoriteEntries();
 if (shouldPersistMigratedFavorites && favoriteEntries.length) {
   saveFavoriteEntries();
 }
+memoByHallKey = loadUserMemos();
 
 const renderFavorites = (items, guestCount) => {
   const storedFavoriteCount = favoriteEntries.length;
@@ -552,20 +653,21 @@ const renderFavorites = (items, guestCount) => {
           <strong>${formatMoney(getEstimatedTotalCost(hall, guestCount))}</strong>
         </div>
 
-        <div class="hall-info-strip">
-          <span><strong>예식형태</strong>${sanitizeText(getDisplayText(hall.ceremonyType, "정보 없음"))}</span>
-          <span><strong>예식시간</strong>${sanitizeText(getDisplayText(hall.ceremonyTime, "정보 없음"))}</span>
-          <span><strong>홀 수</strong>${sanitizeText(formatHallCount(hall.hallCount))}</span>
-        </div>
-
         <div class="favorite-card-meta">
           <span>식대 ${formatMoney(hall.mealPrice)}</span>
           <span>최소보증 ${formatCount(hall.minimumGuarantee)}</span>
           <span>대관료 ${formatMoney(hall.rentPrice)}</span>
           <span>${sanitizeText(hall.hallType || "홀 정보 없음")}</span>
+          <span>${sanitizeText(hall.menu || "메뉴 미상")}</span>
+          <span>${sanitizeText(hall.hallTone || "톤 정보 없음")}</span>
+          <span>${sanitizeText(getDisplayText(hall.ceremonyType, "예식형태 미입력"))}</span>
+          <span>${sanitizeText(formatCeremonyInterval(hall.ceremonyTime, "간격 미입력"))}</span>
+          <span>${sanitizeText(formatHallCountChip(hall.hallCount, "홀수 미입력"))}</span>
         </div>
 
         <p class="favorite-card-formula">${sanitizeText(getCostFormulaLabel(hall, guestCount))}</p>
+        ${renderSourceNote(hall)}
+        ${renderUserMemoField(hall)}
 
         <div class="card-links">
           ${hall.homepage ? `<a href="${sanitizeText(hall.homepage)}" target="_blank" rel="noreferrer">홈페이지</a>` : ""}
@@ -588,7 +690,6 @@ const renderCards = (items, guestCount) => {
   }
 
   cardList.innerHTML = items
-    .slice(0, 12)
     .map((hall, index) => {
       const estimatedGuests = getEstimateGuestCount(hall, guestCount);
       const totalCost = getEstimatedTotalCost(hall, guestCount);
@@ -603,12 +704,6 @@ const renderCards = (items, guestCount) => {
           </div>
           <h3>${sanitizeText(hall.name)}</h3>
           <p class="hall-address">${sanitizeText(hall.address || "-")}</p>
-
-          <div class="hall-info-strip">
-            <span><strong>예식형태</strong>${sanitizeText(getDisplayText(hall.ceremonyType, "정보 없음"))}</span>
-            <span><strong>예식시간</strong>${sanitizeText(getDisplayText(hall.ceremonyTime, "정보 없음"))}</span>
-            <span><strong>홀 수</strong>${sanitizeText(formatHallCount(hall.hallCount))}</span>
-          </div>
 
           <div class="featured-price">
             <span class="featured-label">예상 총비용</span>
@@ -628,12 +723,16 @@ const renderCards = (items, guestCount) => {
             <span>최대수용 ${formatCount(hall.maxCapacity)}</span>
             <span>${sanitizeText(hall.menu || "메뉴 미상")}</span>
             <span>${sanitizeText(hall.hallTone || "톤 정보 없음")}</span>
+            <span>${sanitizeText(getDisplayText(hall.ceremonyType, "예식형태 미입력"))}</span>
+            <span>${sanitizeText(formatCeremonyInterval(hall.ceremonyTime, "간격 미입력"))}</span>
+            <span>${sanitizeText(formatHallCountChip(hall.hallCount, "홀수 미입력"))}</span>
           </div>
 
-          <p class="card-note">${sanitizeText(hall.tags || hall.memo || "메모 정보가 없습니다.")}</p>
+          ${renderSourceNote(hall)}
+          ${renderUserMemoField(hall)}
 
           <div class="card-links">
-            ${hall.homepage ? `<a href="${sanitizeText(hall.homepage)}" target="_blank" rel="noreferrer">홈페이지</a>` : ""}
+          ${hall.homepage ? `<a href="${sanitizeText(hall.homepage)}" target="_blank" rel="noreferrer">홈페이지</a>` : ""}
             ${hall.naverMap ? `<a href="${sanitizeText(hall.naverMap)}" target="_blank" rel="noreferrer">네이버지도</a>` : ""}
           </div>
         </article>
@@ -661,8 +760,8 @@ const renderTable = (items, guestCount) => {
         </td>
         <td>${sanitizeText(hall.district || "-")}</td>
         <td>${sanitizeText(getDisplayText(hall.ceremonyType, "-"))}</td>
-        <td>${sanitizeText(getDisplayText(hall.ceremonyTime, "-"))}</td>
-        <td>${sanitizeText(formatHallCount(hall.hallCount))}</td>
+        <td>${sanitizeText(formatCeremonyInterval(hall.ceremonyTime, "-"))}</td>
+        <td>${sanitizeText(formatHallCountChip(hall.hallCount, "-"))}</td>
         <td>${formatMoney(hall.mealPrice)}</td>
         <td>${formatCount(hall.minimumGuarantee)}</td>
         <td>${formatCount(hall.maxCapacity)}</td>
@@ -760,8 +859,9 @@ const normalizeRecords = (records) =>
     const mealStartPrice = parseIntValue(item["식대 시작가(원)"]);
     const minimumRentPrice = parseIntValue(item["최소 대관료(원)"]);
     const baseRentPrice = parseIntValue(item["대관료(원)"]);
-    const rawHallCount = item["홀 수"] || item.홀수 || item["홀수(개)"] || "";
+    const rawHallCount = item.홀수 || item["홀수"] || item["홀 수"] || item["홀수(개)"] || "";
     const parsedHallCount = parseIntValue(rawHallCount);
+    const ceremonyInterval = item["예식간격(분)"] || item.예식시간 || item["예식 시간"] || "";
 
     return {
       id: parseIntValue(item.ID),
@@ -771,7 +871,7 @@ const normalizeRecords = (records) =>
       hallType: item.홀타입 || "",
       hallTone: item["홀톤(밝은/어두운/혼합)"] || "",
       ceremonyType: item.예식형태 || "",
-      ceremonyTime: item.예식시간 || item["예식 시간"] || "",
+      ceremonyTime: ceremonyInterval,
       hallCount: parsedHallCount ?? (String(rawHallCount).trim() || null),
       menu: item.메뉴 || "",
       mealPrice: mealAveragePrice ?? mealStartPrice,
@@ -1070,6 +1170,21 @@ const handleFavoriteButtonClick = (event) => {
   toggleFavoriteHallByKey(favoriteButton.dataset.favoriteKey);
 };
 
+const handleMemoInput = (event) => {
+  const memoField = event.target.closest("[data-memo-key]");
+  if (!memoField) {
+    return;
+  }
+
+  updateUserMemoByKey(memoField.dataset.memoKey, memoField.value);
+
+  document.querySelectorAll("[data-memo-key]").forEach((field) => {
+    if (field !== memoField && field.dataset.memoKey === memoField.dataset.memoKey) {
+      field.value = memoField.value;
+    }
+  });
+};
+
 [mealPriceInput, guestCountInput, rentPriceInput, districtSelect, sortSelect].forEach((element) => {
   element.addEventListener("input", update);
   element.addEventListener("change", update);
@@ -1083,6 +1198,8 @@ updateDismissButton?.addEventListener("click", hideUpdateBanner);
 cardList?.addEventListener("click", handleFavoriteButtonClick);
 resultTableBody?.addEventListener("click", handleFavoriteButtonClick);
 favoriteList?.addEventListener("click", handleFavoriteButtonClick);
+cardList?.addEventListener("input", handleMemoInput);
+favoriteList?.addEventListener("input", handleMemoInput);
 clearFavoritesButton?.addEventListener("click", clearAllFavorites);
 
 window.addEventListener("weddingpick:update-ready", (event) => {
