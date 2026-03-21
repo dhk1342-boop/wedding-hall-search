@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="웨딩홀 비교기 마스커블 아이콘">
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#b5543d" />
+      <stop offset="100%" stop-color="#7f3323" />
+    </linearGradient>
+    <linearGradient id="panel" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#f9f1e6" />
+      <stop offset="100%" stop-color="#ead7c3" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#d4b06c" />
+      <stop offset="100%" stop-color="#b98d3f" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="156" fill="url(#bg)" />
+  <rect x="88" y="88" width="336" height="336" rx="92" fill="url(#panel)" />
+  <path d="M184 171h40l32 63 33-63h39l-52 93c-12 21-27 32-44 32-18 0-33-11-45-32l-51-93z" fill="#7f3323"/>
+  <path d="M176 329h160" fill="none" stroke="url(#gold)" stroke-linecap="round" stroke-width="22"/>
+  <circle cx="256" cy="351" r="25" fill="url(#gold)"/>
+</svg>
