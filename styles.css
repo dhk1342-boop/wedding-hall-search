@@ -156,6 +156,13 @@ h1 {
   border: 1px solid rgba(75, 52, 34, 0.1);
 }
 
+.template-button {
+  text-decoration: none;
+  background: rgba(255, 248, 240, 0.92);
+  color: var(--accent);
+  border: 1px solid rgba(181, 84, 61, 0.18);
+}
+
 .source-pill {
   display: inline-flex;
   align-items: center;
