@@ -1,23 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="웨딩홀 비교기 마스커블 아이콘">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="웨딩홀픽 마스커블 아이콘">
   <defs>
     <linearGradient id="bg" x1="8%" x2="92%" y1="8%" y2="92%">
-      <stop offset="0%" stop-color="#a45542" />
-      <stop offset="100%" stop-color="#6f2d21" />
-    </linearGradient>
-    <linearGradient id="panel" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#fcf6ef" />
-      <stop offset="100%" stop-color="#ead7c3" />
+      <stop offset="0%" stop-color="#1f6b51" />
+      <stop offset="100%" stop-color="#0b3b2c" />
     </linearGradient>
     <linearGradient id="gold" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#d8b77b" />
-      <stop offset="100%" stop-color="#bd9650" />
+      <stop offset="0%" stop-color="#f5de9d" />
+      <stop offset="100%" stop-color="#c69542" />
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="156" fill="url(#bg)" />
-  <rect x="94" y="94" width="324" height="324" rx="102" fill="url(#panel)" />
-  <path d="M256 152l10 19 19 10-19 10-10 19-10-19-19-10 19-10 10-19z" fill="url(#gold)" />
-  <path d="M184 292v-58c0-40 32-72 72-72s72 32 72 72v58" fill="none" stroke="#6f2d21" stroke-linecap="round" stroke-width="28"/>
-  <path d="M204 322h104" fill="none" stroke="#6f2d21" stroke-linecap="round" stroke-width="28"/>
-  <path d="M182 368h148" fill="none" stroke="url(#gold)" stroke-linecap="round" stroke-width="18"/>
-  <circle cx="256" cy="394" r="22" fill="url(#gold)"/>
+  <circle cx="250" cy="362" r="124" fill="rgba(255, 226, 167, 0.06)" />
+  <path d="M130 118h42l82 210 70-210h40L275 402h-35L130 118z" fill="url(#gold)"/>
+  <ellipse cx="232" cy="288" rx="176" ry="92" fill="none" stroke="url(#gold)" stroke-width="18" transform="rotate(-11 232 288)"/>
+  <path d="M322 122c31 0 56 22 56 60 0 28-15 49-40 64" fill="none" stroke="url(#gold)" stroke-width="18" stroke-linecap="round"/>
+  <path d="M386 72l12 19 23 8-17 15 2 24-20-12-21 12 4-24-17-15 23-8 11-19z" fill="url(#gold)"/>
+  <path d="M380 94c11-8 25-9 35-2-1 11-8 20-18 25-8-6-13-13-17-23z" fill="rgba(248, 229, 171, 0.88)"/>
 </svg>
