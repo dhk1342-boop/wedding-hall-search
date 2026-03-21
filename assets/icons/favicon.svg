@@ -1,17 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="웨딩홀 비교기 아이콘">
   <defs>
-    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#f8efe4" />
-      <stop offset="100%" stop-color="#e1c6ac" />
+    <linearGradient id="bg" x1="12%" x2="88%" y1="8%" y2="92%">
+      <stop offset="0%" stop-color="#fbf5ed" />
+      <stop offset="100%" stop-color="#e7d2bf" />
     </linearGradient>
     <linearGradient id="accent" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#b5543d" />
-      <stop offset="100%" stop-color="#7f3323" />
+      <stop offset="0%" stop-color="#9f4f3d" />
+      <stop offset="100%" stop-color="#6f2d21" />
     </linearGradient>
   </defs>
   <rect width="128" height="128" rx="32" fill="url(#bg)" />
-  <path d="M28 46c0-10 8-18 18-18h36c10 0 18 8 18 18v36c0 10-8 18-18 18H46c-10 0-18-8-18-18V46z" fill="none" stroke="url(#accent)" stroke-width="8"/>
-  <path d="M46 42h12l10 18 10-18h12L77 82H67L46 42z" fill="url(#accent)"/>
-  <circle cx="64" cy="91" r="8" fill="#b98d3f"/>
+  <rect x="26" y="24" width="76" height="80" rx="24" fill="rgba(255,255,255,0.58)" stroke="rgba(111,45,33,0.14)" />
+  <path d="M43 72V58c0-12 9-21 21-21s21 9 21 21v14" fill="none" stroke="url(#accent)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M52 76h24" fill="none" stroke="url(#accent)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M64 32l2.7 5.3L72 40l-5.3 2.7L64 48l-2.7-5.3L56 40l5.3-2.7L64 32z" fill="#c89d56"/>
+  <circle cx="64" cy="88" r="6" fill="#c89d56"/>
 </svg>
-
