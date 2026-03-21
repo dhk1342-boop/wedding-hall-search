@@ -17,6 +17,10 @@ const updateBanner = document.querySelector("#updateBanner");
 const updateBannerMessage = document.querySelector("#updateBannerMessage");
 const updateRefreshButton = document.querySelector("#updateRefreshButton");
 const updateDismissButton = document.querySelector("#updateDismissButton");
+const favoriteSummary = document.querySelector("#favoriteSummary");
+const favoriteCountBadge = document.querySelector("#favoriteCountBadge");
+const clearFavoritesButton = document.querySelector("#clearFavoritesButton");
+const favoriteList = document.querySelector("#favoriteList");
 
 const totalCount = document.querySelector("#totalCount");
 const resultCount = document.querySelector("#resultCount");
@@ -31,7 +35,10 @@ const activeSummary = document.querySelector("#activeSummary");
 const cardList = document.querySelector("#cardList");
 const resultTableBody = document.querySelector("#resultTableBody");
 
+const FAVORITES_STORAGE_KEY = "weddingpick-favorites";
+
 let pendingUpdateRegistration = null;
+let favoriteHallKeys = [];
 
 const numberFormatter = new Intl.NumberFormat("ko-KR");
 const textDecoder = new TextDecoder("utf-8");
@@ -93,6 +100,89 @@ const buildHallKey = (hall) =>
   [hall.name, hall.address || hall.district || ""]
     .map((value) => String(value ?? "").trim().toLowerCase())
     .join("::");
+
+const loadFavoriteHallKeys = () => {
+  if (typeof window.localStorage === "undefined") {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(FAVORITES_STORAGE_KEY) || "[]");
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    const uniqueKeys = [];
+    parsed.forEach((value) => {
+      const hallKey = String(value || "").trim();
+      if (hallKey && !uniqueKeys.includes(hallKey)) {
+        uniqueKeys.push(hallKey);
+      }
+    });
+    return uniqueKeys;
+  } catch (error) {
+    return [];
+  }
+};
+
+const saveFavoriteHallKeys = () => {
+  if (typeof window.localStorage === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoriteHallKeys));
+  } catch (error) {
+    // Ignore storage failures so the main experience keeps working.
+  }
+};
+
+const isFavoriteHall = (hall) => favoriteHallKeys.includes(buildHallKey(hall));
+
+const toggleFavoriteHallByKey = (hallKey) => {
+  if (!hallKey) {
+    return;
+  }
+
+  if (favoriteHallKeys.includes(hallKey)) {
+    favoriteHallKeys = favoriteHallKeys.filter((key) => key !== hallKey);
+  } else {
+    favoriteHallKeys = [hallKey, ...favoriteHallKeys.filter((key) => key !== hallKey)];
+  }
+
+  saveFavoriteHallKeys();
+  update();
+};
+
+const clearAllFavorites = () => {
+  favoriteHallKeys = [];
+  saveFavoriteHallKeys();
+  update();
+};
+
+const getFavoriteHalls = () => {
+  const hallsByKey = new Map(halls.map((hall) => [buildHallKey(hall), hall]));
+  return favoriteHallKeys.map((hallKey) => hallsByKey.get(hallKey)).filter(Boolean);
+};
+
+const renderFavoriteButton = (hall, className = "") => {
+  const active = isFavoriteHall(hall);
+  const label = active ? "즐겨찾기 해제" : "즐겨찾기 추가";
+  const classes = `favorite-button ${className} ${active ? "is-active" : ""}`.trim();
+
+  return `
+    <button
+      type="button"
+      class="${classes}"
+      data-favorite-key="${sanitizeText(buildHallKey(hall))}"
+      aria-pressed="${active}"
+      aria-label="${label}"
+      title="${label}"
+    >
+      <span aria-hidden="true">${active ? "★" : "☆"}</span>
+    </button>
+  `;
+};
 
 const mergeHallRecord = (existing, incoming) => {
   const merged = { ...existing };
@@ -277,6 +367,78 @@ const rebuildDistrictOptions = () => {
   }
 };
 
+favoriteHallKeys = loadFavoriteHallKeys();
+
+const renderFavorites = (items, guestCount) => {
+  const storedFavoriteCount = favoriteHallKeys.length;
+
+  favoriteCountBadge.textContent = `${numberFormatter.format(storedFavoriteCount)}개`;
+  clearFavoritesButton.hidden = storedFavoriteCount === 0;
+
+  if (!storedFavoriteCount) {
+    favoriteSummary.textContent = "별 버튼을 눌러 마음에 드는 웨딩홀을 따로 모아보세요.";
+    favoriteList.innerHTML = `
+      <div class="empty-state favorite-empty-state">
+        아직 찜한 웨딩홀이 없습니다.<br />
+        검색 결과에서 별 버튼을 누르면 이곳에 자동으로 모입니다.
+      </div>
+    `;
+    return;
+  }
+
+  if (!items.length) {
+    favoriteSummary.textContent = "저장된 즐겨찾기는 있지만 현재 불러온 데이터에서는 일치하는 웨딩홀을 찾지 못했습니다.";
+    favoriteList.innerHTML = `
+      <div class="empty-state favorite-empty-state">
+        현재 데이터셋에 표시할 즐겨찾기 항목이 없습니다.<br />
+        기본 데이터를 다시 불러오거나 다른 업로드 파일을 확인해보세요.
+      </div>
+    `;
+    return;
+  }
+
+  favoriteSummary.textContent =
+    items.length === storedFavoriteCount
+      ? `총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀을 찜해두었습니다. 검색 조건과 상관없이 여기서 다시 비교할 수 있어요.`
+      : `총 ${numberFormatter.format(storedFavoriteCount)}개를 저장했고, 현재 데이터에서는 ${numberFormatter.format(items.length)}개가 표시됩니다.`;
+
+  favoriteList.innerHTML = items
+    .map((hall) => `
+      <article class="favorite-card">
+        <div class="favorite-card-top">
+          <div>
+            <div class="favorite-card-heading">
+              <h3>${sanitizeText(hall.name)}</h3>
+              <span class="favorite-card-district">${sanitizeText(hall.district || "지역 정보 없음")}</span>
+            </div>
+            <p class="favorite-card-address">${sanitizeText(hall.address || "-")}</p>
+          </div>
+          ${renderFavoriteButton(hall, "favorite-card-button")}
+        </div>
+
+        <div class="favorite-card-price">
+          <span>예상 총비용</span>
+          <strong>${formatMoney(getEstimatedTotalCost(hall, guestCount))}</strong>
+        </div>
+
+        <div class="favorite-card-meta">
+          <span>식대 ${formatMoney(hall.mealPrice)}</span>
+          <span>최소보증 ${formatCount(hall.minimumGuarantee)}</span>
+          <span>대관료 ${formatMoney(hall.rentPrice)}</span>
+          <span>${sanitizeText(hall.hallType || "홀 정보 없음")}</span>
+        </div>
+
+        <p class="favorite-card-formula">${sanitizeText(getCostFormulaLabel(hall, guestCount))}</p>
+
+        <div class="card-links">
+          ${hall.homepage ? `<a href="${sanitizeText(hall.homepage)}" target="_blank" rel="noreferrer">홈페이지</a>` : ""}
+          ${hall.naverMap ? `<a href="${sanitizeText(hall.naverMap)}" target="_blank" rel="noreferrer">네이버지도</a>` : ""}
+        </div>
+      </article>
+    `)
+    .join("");
+};
+
 const renderCards = (items, guestCount) => {
   if (!items.length) {
     cardList.innerHTML = `
@@ -297,8 +459,11 @@ const renderCards = (items, guestCount) => {
       return `
         <article class="hall-card" style="animation-delay:${index * 0.04}s">
           <div class="card-top">
-            <span class="badge">${sanitizeText(hall.zone || "기타")} · ${sanitizeText(hall.hallType || "정보없음")}</span>
-            <span class="badge">추천 ${sanitizeText(hall.recommendationGrade || "-")}</span>
+            <div class="card-top-main">
+              <span class="badge">${sanitizeText(hall.zone || "기타")} · ${sanitizeText(hall.hallType || "정보없음")}</span>
+              <span class="badge">추천 ${sanitizeText(hall.recommendationGrade || "-")}</span>
+            </div>
+            ${renderFavoriteButton(hall, "card-favorite-button")}
           </div>
           <h3>${sanitizeText(hall.name)}</h3>
           <p class="hall-address">${sanitizeText(hall.address || "-")}</p>
@@ -348,7 +513,10 @@ const renderTable = (items, guestCount) => {
   resultTableBody.innerHTML = items
     .map((hall) => `
       <tr>
-        <td class="table-name">${sanitizeText(hall.name)}</td>
+        <td class="table-name-cell">
+          ${renderFavoriteButton(hall, "table-favorite-button")}
+          <span class="table-name">${sanitizeText(hall.name)}</span>
+        </td>
         <td>${sanitizeText(hall.district || "-")}</td>
         <td>${formatMoney(hall.mealPrice)}</td>
         <td>${formatCount(hall.minimumGuarantee)}</td>
@@ -390,9 +558,11 @@ const update = () => {
   const filters = getFilters();
   const filtered = halls.filter((hall) => matchesFilters(hall, filters));
   const sorted = sortHalls(filtered, filters);
+  const favoriteItems = getFavoriteHalls();
 
   activeSummary.textContent = buildSummary(filters, sorted);
   renderStats(sorted, filters.guests);
+  renderFavorites(favoriteItems, filters.guests);
   renderCards(sorted, filters.guests);
   renderTable(sorted, filters.guests);
 };
@@ -743,6 +913,16 @@ const handleBuiltinReload = async () => {
   }
 };
 
+const handleFavoriteButtonClick = (event) => {
+  const favoriteButton = event.target.closest("[data-favorite-key]");
+  if (!favoriteButton) {
+    return;
+  }
+
+  event.preventDefault();
+  toggleFavoriteHallByKey(favoriteButton.dataset.favoriteKey);
+};
+
 [mealPriceInput, guestCountInput, rentPriceInput, districtSelect, sortSelect].forEach((element) => {
   element.addEventListener("input", update);
   element.addEventListener("change", update);
@@ -753,6 +933,10 @@ excelUpload.addEventListener("change", handleExcelUpload);
 reloadBuiltinButton.addEventListener("click", handleBuiltinReload);
 updateRefreshButton?.addEventListener("click", applyPendingUpdate);
 updateDismissButton?.addEventListener("click", hideUpdateBanner);
+cardList?.addEventListener("click", handleFavoriteButtonClick);
+resultTableBody?.addEventListener("click", handleFavoriteButtonClick);
+favoriteList?.addEventListener("click", handleFavoriteButtonClick);
+clearFavoritesButton?.addEventListener("click", clearAllFavorites);
 
 window.addEventListener("weddingpick:update-ready", (event) => {
   const registration = event.detail?.registration ?? null;
