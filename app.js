@@ -13,6 +13,10 @@ const excelUpload = document.querySelector("#excelUpload");
 const reloadBuiltinButton = document.querySelector("#reloadBuiltinButton");
 const dataSourceLabel = document.querySelector("#dataSourceLabel");
 const uploadStatus = document.querySelector("#uploadStatus");
+const updateBanner = document.querySelector("#updateBanner");
+const updateBannerMessage = document.querySelector("#updateBannerMessage");
+const updateRefreshButton = document.querySelector("#updateRefreshButton");
+const updateDismissButton = document.querySelector("#updateDismissButton");
 
 const totalCount = document.querySelector("#totalCount");
 const resultCount = document.querySelector("#resultCount");
@@ -26,6 +30,8 @@ const costBasisBadge = document.querySelector("#costBasisBadge");
 const activeSummary = document.querySelector("#activeSummary");
 const cardList = document.querySelector("#cardList");
 const resultTableBody = document.querySelector("#resultTableBody");
+
+let pendingUpdateRegistration = null;
 
 const numberFormatter = new Intl.NumberFormat("ko-KR");
 const textDecoder = new TextDecoder("utf-8");
@@ -408,6 +414,31 @@ const setSourceStatus = (message, type = "") => {
   }
 };
 
+const showUpdateBanner = (message, registration) => {
+  pendingUpdateRegistration = registration ?? pendingUpdateRegistration;
+  if (updateBannerMessage) {
+    updateBannerMessage.textContent = message;
+  }
+  if (updateBanner) {
+    updateBanner.hidden = false;
+  }
+};
+
+const hideUpdateBanner = () => {
+  if (updateBanner) {
+    updateBanner.hidden = true;
+  }
+};
+
+const applyPendingUpdate = () => {
+  const waitingWorker = pendingUpdateRegistration?.waiting;
+  if (waitingWorker) {
+    waitingWorker.postMessage({ type: "SKIP_WAITING" });
+    return;
+  }
+  window.location.reload();
+};
+
 const normalizeRecords = (records) =>
   records.map((item) => {
     const mealAveragePrice = parseIntValue(item["식대 평균가(원)"]);
@@ -720,6 +751,13 @@ const handleBuiltinReload = async () => {
 resetButton.addEventListener("click", resetFilters);
 excelUpload.addEventListener("change", handleExcelUpload);
 reloadBuiltinButton.addEventListener("click", handleBuiltinReload);
+updateRefreshButton?.addEventListener("click", applyPendingUpdate);
+updateDismissButton?.addEventListener("click", hideUpdateBanner);
+
+window.addEventListener("weddingpick:update-ready", (event) => {
+  const registration = event.detail?.registration ?? null;
+  showUpdateBanner("새 버전이 준비됐어요. 최신 화면과 데이터를 보려면 새로고침하세요.", registration);
+});
 
 rebuildDistrictOptions();
 update();
