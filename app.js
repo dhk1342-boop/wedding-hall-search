@@ -3,6 +3,7 @@ const builtinHalls = Array.isArray(window.WEDDING_HALLS) ? [...window.WEDDING_HA
 const DEFAULT_WORKBOOK_FILES = ["웨딩홀 정보.xlsx", "seoul_wedding_master_final_pro.xlsx"];
 const TEMPLATE_SHEET_NAME = "웨딩홀_추가양식";
 
+const hallNameInput = document.querySelector("#hallNameInput");
 const mealPriceInput = document.querySelector("#mealPriceInput");
 const guestCountInput = document.querySelector("#guestCountInput");
 const rentPriceInput = document.querySelector("#rentPriceInput");
@@ -38,7 +39,7 @@ const resultTableBody = document.querySelector("#resultTableBody");
 
 const FAVORITES_STORAGE_KEY = "weddingpick-favorites";
 const MEMOS_STORAGE_KEY = "weddingpick-user-memos";
-const SHARE_FILE_VERSION = 2;
+const SHARE_FILE_VERSION = 3;
 const SHARE_HASH_KEY = "share";
 
 let pendingUpdateRegistration = null;
@@ -137,6 +138,9 @@ const getDisplayText = (value, fallback = "-") => {
 
   return fallback;
 };
+
+const normalizeSearchText = (value) => String(value ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+const compactSearchText = (value) => normalizeSearchText(value).replace(/\s+/g, "");
 
 const matchesHallTone = (hall, toneKeyword) => String(hall.hallTone || "").includes(toneKeyword);
 
@@ -449,12 +453,15 @@ const clearAllFavorites = () => {
 
 const getFavoriteHalls = () => [...favoriteEntries];
 
+const getShareFavoriteKeys = () =>
+  [...new Set(favoriteEntries.map((entry) => String(entry.favoriteKey || "").trim()).filter(Boolean))];
+
 const buildSharePayload = () => ({
   version: SHARE_FILE_VERSION,
   exportedAt: new Date().toISOString(),
   app: "weddingpick",
-  favorites: favoriteEntries,
-  memos: memoByHallKey,
+  favorites: getShareFavoriteKeys(),
+  memos: normalizeMemoMap(memoByHallKey),
 });
 
 const createShareUrl = (encodedPayload) => {
@@ -830,6 +837,7 @@ const getCostFormulaLabel = (hall, guestCount) => {
 };
 
 const getFilters = () => ({
+  hallName: normalizeSearchText(hallNameInput.value),
   mealMax: Number(mealPriceInput.value) || null,
   guests: Number(guestCountInput.value) || null,
   rentMax: Number(rentPriceInput.value) || null,
@@ -838,6 +846,16 @@ const getFilters = () => ({
 });
 
 const matchesFilters = (hall, filters) => {
+  if (filters.hallName) {
+    const normalizedName = normalizeSearchText(hall.name);
+    const compactName = compactSearchText(hall.name);
+    const compactQuery = compactSearchText(filters.hallName);
+
+    if (!normalizedName.includes(filters.hallName) && !compactName.includes(compactQuery)) {
+      return false;
+    }
+  }
+
   if (filters.mealMax && (!hall.mealPrice || hall.mealPrice > filters.mealMax)) {
     return false;
   }
@@ -908,6 +926,9 @@ const sortHalls = (items, filters) => {
 const buildSummary = (filters, results) => {
   const parts = [];
 
+  if (filters.hallName) {
+    parts.push(`이름 '${filters.hallName}'`);
+  }
   if (filters.mealMax) {
     parts.push(`식대 ${formatMoney(filters.mealMax)} 이하`);
   }
@@ -1161,6 +1182,7 @@ const update = () => {
 };
 
 const resetFilters = () => {
+  hallNameInput.value = "";
   mealPriceInput.value = "";
   guestCountInput.value = "";
   rentPriceInput.value = "";
@@ -1534,7 +1556,7 @@ const handleMemoInput = (event) => {
   });
 };
 
-[mealPriceInput, guestCountInput, rentPriceInput, districtSelect, sortSelect].forEach((element) => {
+[hallNameInput, mealPriceInput, guestCountInput, rentPriceInput, districtSelect, sortSelect].forEach((element) => {
   element.addEventListener("input", update);
   element.addEventListener("change", update);
 });
