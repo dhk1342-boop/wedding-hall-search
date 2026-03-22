@@ -1,1401 +1,1402 @@
-:root {
-  --bg-top: #f4ecdf;
-  --bg-bottom: #e6d2bf;
-  --panel: rgba(255, 251, 245, 0.82);
-  --panel-strong: rgba(255, 255, 255, 0.92);
-  --line: rgba(75, 52, 34, 0.14);
-  --text: #2d2018;
-  --muted: #716255;
-  --accent: #b5543d;
-  --accent-deep: #7f3323;
-  --accent-soft: rgba(181, 84, 61, 0.12);
-  --gold: #b98d3f;
-  --mint: #1d7d72;
-  --shadow: 0 24px 60px rgba(84, 47, 26, 0.12);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-  -webkit-text-size-adjust: 100%;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  font-family: "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic", sans-serif;
-  color: var(--text);
-  background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.72), transparent 26%),
-    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.32), transparent 22%),
-    linear-gradient(135deg, var(--bg-top) 0%, #eadccd 38%, var(--bg-bottom) 100%);
-  overflow-x: hidden;
-}
-
-body.is-standalone-app {
-  min-height: 100dvh;
-}
-
-body::before,
-body::after {
-  content: "";
-  position: fixed;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-}
-
-body::before {
-  width: 460px;
-  height: 460px;
-  top: -160px;
-  right: -100px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.48), transparent 68%);
-}
-
-body::after {
-  width: 360px;
-  height: 360px;
-  left: -140px;
-  bottom: -120px;
-  background: radial-gradient(circle, rgba(190, 120, 86, 0.16), transparent 70%);
-}
-
-.page-shell {
-  position: relative;
-  z-index: 1;
-  width: min(1340px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 34px 0 48px;
-}
-
-.update-banner[hidden] {
-  display: none;
-}
-
-.update-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 16px;
-  padding: 16px 20px;
-  border-radius: 24px;
-  background:
-    linear-gradient(135deg, rgba(181, 84, 61, 0.16), rgba(127, 51, 35, 0.12)),
-    rgba(255, 251, 245, 0.92);
-  border: 1px solid rgba(181, 84, 61, 0.18);
-  box-shadow: 0 16px 36px rgba(84, 47, 26, 0.08);
-  backdrop-filter: blur(18px);
-}
-
-.update-banner-copy strong {
-  display: block;
-  font-size: 1rem;
-  letter-spacing: -0.02em;
-}
-
-.update-banner-copy p {
-  margin-top: 6px;
-  color: var(--muted);
-  line-height: 1.55;
-}
-
-.update-banner-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.update-banner-primary,
-.update-banner-secondary {
-  min-height: 42px;
-  padding: 0 16px;
-  border-radius: 999px;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.update-banner-primary {
-  border: 0;
-  color: #fff8f3;
-  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-}
-
-.update-banner-secondary {
-  border: 1px solid rgba(75, 52, 34, 0.1);
-  color: var(--accent-deep);
-  background: rgba(255, 255, 255, 0.84);
-}
-
-body.is-standalone-app .page-shell {
-  padding-top: calc(18px + env(safe-area-inset-top));
-  padding-bottom: calc(40px + env(safe-area-inset-bottom));
-}
-
-.hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.75fr) minmax(280px, 0.85fr);
-  gap: 20px;
-  margin-bottom: 22px;
-}
-
-.hero-copy,
-.hero-note,
-.panel {
-  background: var(--panel);
-  backdrop-filter: blur(18px);
-  border: 1px solid var(--line);
-  border-radius: 30px;
-  box-shadow: var(--shadow);
-}
-
-.hero-copy {
-  padding: 34px;
-  position: relative;
-  overflow: hidden;
-}
-
-body.is-standalone-app .hero-copy {
-  background:
-    linear-gradient(180deg, rgba(255, 251, 246, 0.96), rgba(248, 239, 228, 0.9)),
-    var(--panel);
-  box-shadow: 0 26px 60px rgba(76, 39, 21, 0.14);
-}
-
-.hero-copy::after {
-  content: "";
-  position: absolute;
-  right: -30px;
-  top: -40px;
-  width: 240px;
-  height: 240px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.48), transparent 70%);
-}
-
-h1,
-h2,
-h3,
-p {
-  margin: 0;
-}
-
-.hero-appbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 22px;
-}
-
-.hero-brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.hero-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(245, 226, 205, 0.9));
-  border: 1px solid rgba(181, 84, 61, 0.14);
-  color: var(--accent-deep);
-  font-size: 1rem;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-
-.hero-eyebrow {
-  display: block;
-  color: var(--accent);
-  font-size: 0.74rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  font-weight: 900;
-}
-
-.hero-subeyebrow {
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 0.96rem;
-}
-
-.install-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 38px;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(75, 52, 34, 0.08);
-  color: var(--accent-deep);
-  font-size: 0.86rem;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-h1 {
-  max-width: 820px;
-  font-size: clamp(2.1rem, 4vw, 4rem);
-  line-height: 1.02;
-  letter-spacing: -0.05em;
-}
-
-.hero-intro {
-  max-width: 760px;
-  margin-top: 16px;
-  color: var(--muted);
-  font-size: 1.02rem;
-  line-height: 1.75;
-}
-
-.hero-quick-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 22px;
-}
-
-.hero-quick-card {
-  padding: 16px 18px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.76);
-  border: 1px solid rgba(75, 52, 34, 0.08);
-}
-
-.hero-quick-label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.hero-quick-card strong {
-  font-size: 0.98rem;
-  line-height: 1.5;
-}
-
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  margin-top: 30px;
-}
-
-.upload-button,
-.ghost-button,
-.secondary-button {
-  border: 0;
-  border-radius: 999px;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 800;
-}
-
-.upload-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  padding: 0 20px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-  color: #fff7f2;
-  box-shadow: 0 16px 28px rgba(127, 51, 35, 0.24);
-}
-
-.secondary-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  padding: 0 18px;
-  background: rgba(255, 255, 255, 0.86);
-  color: var(--accent-deep);
-  border: 1px solid rgba(75, 52, 34, 0.1);
-}
-
-.template-button {
-  text-decoration: none;
-  background: rgba(255, 248, 240, 0.92);
-  color: var(--accent);
-  border: 1px solid rgba(181, 84, 61, 0.18);
-}
-
-.source-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 0 16px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.74);
-  border: 1px solid rgba(75, 52, 34, 0.08);
-  color: var(--muted);
-  font-weight: 700;
-}
-
-.source-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--mint);
-  box-shadow: 0 0 0 6px rgba(29, 125, 114, 0.12);
-}
-
-.upload-status {
-  margin-top: 14px;
-  color: var(--muted);
-  line-height: 1.6;
-}
-
-.upload-status.is-error {
-  color: #9a3c2b;
-}
-
-.upload-status.is-success {
-  color: var(--mint);
-}
-
-.hero-note {
-  padding: 28px;
-  display: grid;
-  align-content: center;
-  gap: 12px;
-  background:
-    linear-gradient(180deg, rgba(124, 52, 35, 0.9), rgba(98, 41, 27, 0.92)),
-    var(--panel);
-  color: #fff7f1;
-}
-
-.hero-note p {
-  color: rgba(255, 240, 231, 0.74);
-  font-weight: 700;
-}
-
-.hero-note-grid {
-  display: grid;
-  gap: 10px;
-}
-
-.hero-note strong {
-  font-size: 1.16rem;
-  letter-spacing: -0.02em;
-}
-
-.hero-note-foot {
-  color: rgba(255, 241, 232, 0.82);
-  line-height: 1.6;
-  font-size: 0.92rem;
-}
-
-.layout {
-  display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
-  gap: 20px;
-}
-
-.filters,
-.results {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  min-width: 0;
-}
-
-.panel {
-  padding: 24px;
-  min-width: 0;
-}
-
-.panel-head,
-.summary-panel {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.field {
-  display: block;
-  margin-bottom: 18px;
-}
-
-.field span {
-  display: inline-block;
-  margin-bottom: 8px;
-  font-weight: 800;
-}
-
-.field small {
-  display: block;
-  margin-top: 8px;
-  color: var(--muted);
-  line-height: 1.55;
-}
-
-.input-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  align-items: center;
-}
-
-input,
-select,
-button {
-  font: inherit;
-}
-
-input,
-select {
-  width: 100%;
-  border: 1px solid rgba(75, 52, 34, 0.14);
-  background: rgba(255, 255, 255, 0.86);
-  color: var(--text);
-  border-radius: 18px;
-  padding: 14px 16px;
-  outline: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-input:focus,
-select:focus {
-  transform: translateY(-1px);
-  border-color: rgba(181, 84, 61, 0.7);
-  box-shadow: 0 0 0 5px rgba(181, 84, 61, 0.1);
-}
-
-.ghost-button {
-  background: var(--accent-soft);
-  color: var(--accent);
-  min-height: 42px;
-  padding: 0 14px;
-}
-
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.stat-grid div {
-  padding: 16px;
-  border-radius: 22px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(252, 248, 244, 0.95)),
-    var(--panel-strong);
-  border: 1px solid rgba(75, 52, 34, 0.08);
-}
-
-.stat-label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.stat-grid strong {
-  font-size: 1.2rem;
-  letter-spacing: -0.03em;
-}
-
-.summary-panel {
-  align-items: center;
-}
-
-#activeSummary {
-  margin-top: 8px;
-  color: var(--muted);
-  line-height: 1.6;
-}
-
-.favorites-panel-head {
-  align-items: center;
-}
-
-.favorite-summary {
-  margin-top: 8px;
-  color: var(--muted);
-  line-height: 1.6;
-}
-
-.favorites-panel-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.favorite-count-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 42px;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: rgba(185, 141, 63, 0.12);
-  color: #8b6524;
-  font-size: 0.92rem;
-  font-weight: 800;
-}
-
-.favorites-share-button {
-  min-height: 42px;
-  padding: 0 14px;
-}
-
-.summary-highlight {
-  min-width: 180px;
-  padding: 14px 16px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.76);
-  text-align: right;
-}
-
-.summary-highlight span {
-  display: block;
-  color: var(--muted);
-  font-size: 0.88rem;
-  margin-bottom: 4px;
-}
-
-.summary-highlight strong {
-  font-size: 1.08rem;
-}
-
-.cost-info-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.cost-info-panel p {
-  margin-top: 8px;
-  color: var(--muted);
-  line-height: 1.6;
-}
-
-.cost-info-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.cost-info-badges span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: rgba(29, 125, 114, 0.08);
-  color: var(--mint);
-  font-size: 0.88rem;
-  font-weight: 800;
-}
-
-.favorite-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-  margin-top: 18px;
-}
-
-.favorite-card {
-  padding: 18px;
-  border-radius: 24px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(250, 244, 238, 0.96)),
-    var(--panel-strong);
-  border: 1px solid rgba(75, 52, 34, 0.1);
-}
-
-.favorite-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.favorite-card-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.favorite-card h3 {
-  font-size: 1.08rem;
-  letter-spacing: -0.03em;
-}
-
-.favorite-card-district {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: rgba(181, 84, 61, 0.08);
-  color: var(--accent);
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.favorite-card-address,
-.favorite-card-formula {
-  margin-top: 10px;
-  color: var(--muted);
-  line-height: 1.55;
-}
-
-.memo-section {
-  display: block;
-  margin-top: 14px;
-}
-
-.memo-label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--muted);
-  font-size: 0.84rem;
-  font-weight: 800;
-}
-
-.memo-textarea {
-  width: 100%;
-  min-height: 88px;
-  resize: vertical;
-  padding: 12px 14px;
-  border: 1px solid rgba(75, 52, 34, 0.12);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--text);
-  outline: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.memo-textarea:focus {
-  transform: translateY(-1px);
-  border-color: rgba(181, 84, 61, 0.7);
-  box-shadow: 0 0 0 5px rgba(181, 84, 61, 0.08);
-}
-
-.memo-help {
-  display: block;
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 0.8rem;
-  line-height: 1.45;
-}
-
-.hall-info-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.hall-info-strip span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 7px 11px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(75, 52, 34, 0.08);
-  color: var(--text);
-  font-size: 0.87rem;
-}
-
-.hall-info-strip strong {
-  color: var(--accent-deep);
-  font-size: 0.78rem;
-  letter-spacing: -0.01em;
-}
-
-.favorite-card-price {
-  margin-top: 16px;
-  padding: 14px 16px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, rgba(181, 84, 61, 0.1), rgba(185, 141, 63, 0.1));
-}
-
-.favorite-card-price span {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
-.favorite-card-price strong {
-  font-size: 1.18rem;
-  letter-spacing: -0.03em;
-}
-
-.favorite-card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.favorite-card-meta span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(29, 125, 114, 0.08);
-  color: var(--text);
-  font-size: 0.85rem;
-}
-
-.favorite-empty-state {
-  margin-top: 18px;
-}
-
-.card-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-  gap: 18px;
-}
-
-.hall-card {
-  position: relative;
-  overflow: hidden;
-  padding: 24px;
-  border-radius: 28px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(250, 244, 238, 0.96)),
-    var(--panel-strong);
-  border: 1px solid rgba(75, 52, 34, 0.12);
-  box-shadow: 0 20px 44px rgba(84, 47, 26, 0.08);
-  transform: translateY(12px);
-  opacity: 0;
-  animation: card-rise 0.45s ease forwards;
-}
-
-.hall-card::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 5px;
-  background: linear-gradient(90deg, var(--accent), var(--gold));
-}
-
-.card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.card-top-main {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 11px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.favorite-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border: 1px solid rgba(75, 52, 34, 0.12);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  color: rgba(127, 51, 35, 0.78);
-  cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, color 0.18s ease;
-  flex-shrink: 0;
-}
-
-.favorite-button:hover,
-.favorite-button:focus-visible {
-  transform: translateY(-1px);
-  border-color: rgba(181, 84, 61, 0.34);
-  box-shadow: 0 10px 22px rgba(84, 47, 26, 0.08);
-  color: var(--accent);
-}
-
-.favorite-button.is-active {
-  border-color: rgba(185, 141, 63, 0.28);
-  background: rgba(255, 248, 229, 0.96);
-  color: #b98d3f;
-}
-
-.favorite-button span {
-  font-size: 1.18rem;
-  line-height: 1;
-}
-
-.table-favorite-button {
-  width: 34px;
-  height: 34px;
-}
-
-.table-favorite-button span {
-  font-size: 1rem;
-}
-
-.hall-card h3 {
-  margin-top: 12px;
-  font-size: 1.22rem;
-  letter-spacing: -0.03em;
-}
-
-.hall-address {
-  margin-top: 8px;
-  color: var(--muted);
-  line-height: 1.55;
-}
-
-.featured-price {
-  margin-top: 18px;
-  padding: 16px 18px;
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(181, 84, 61, 0.1), rgba(185, 141, 63, 0.1));
-}
-
-.featured-label {
-  display: block;
-  color: var(--muted);
-  font-size: 0.84rem;
-  margin-bottom: 6px;
-}
-
-.featured-value {
-  font-size: 1.55rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-}
-
-.formula-text {
-  margin-top: 14px;
-  color: var(--accent-deep);
-  line-height: 1.55;
-  font-size: 0.95rem;
-  font-weight: 700;
-}
-
-.cost-breakdown,
-.meta,
-.card-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.cost-breakdown span,
-.meta span,
-.card-links a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: rgba(181, 84, 61, 0.08);
-  color: var(--text);
-  text-decoration: none;
-  font-size: 0.88rem;
-}
-
-.cost-breakdown span {
-  background: rgba(29, 125, 114, 0.08);
-}
-
-.card-note {
-  margin-top: 14px;
-  min-height: 48px;
-  color: var(--muted);
-  line-height: 1.55;
-}
-
-.empty-state {
-  padding: 42px 24px;
-  text-align: center;
-  border-radius: 28px;
-  background: rgba(255, 252, 247, 0.85);
-  border: 1px dashed rgba(75, 52, 34, 0.2);
-  color: var(--muted);
-  line-height: 1.7;
-}
-
-.table-wrap {
-  overflow-x: auto;
-  max-width: 100%;
-  -webkit-overflow-scrolling: touch;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 760px;
-}
-
-th,
-td {
-  padding: 15px 12px;
-  border-bottom: 1px solid rgba(75, 52, 34, 0.1);
-  text-align: left;
-  white-space: nowrap;
-}
-
-th {
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 800;
-}
-
-td a {
-  color: var(--accent);
-  text-decoration: none;
-  font-weight: 800;
-}
-
-.table-name-cell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.table-name {
-  font-weight: 800;
-}
-
-@keyframes card-rise {
-  from {
-    transform: translateY(12px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@media (max-width: 980px) {
-  .update-banner {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .update-banner-actions {
-    width: 100%;
-  }
-
-  .hero,
-  .layout {
-    grid-template-columns: 1fr;
-  }
-
-  .page-shell {
-    width: min(100% - 20px, 1340px);
-    padding-top: 20px;
-  }
-
-  .summary-panel {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .favorites-panel-head {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .favorites-panel-actions {
-    justify-content: flex-start;
-  }
-
-  .cost-info-panel {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .summary-highlight {
-    width: 100%;
-    text-align: left;
-  }
-
-  .table-panel {
-    padding: 18px;
-  }
-
-  .hero-quick-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 820px) {
-  .page-shell {
-    width: min(100% - 16px, 1340px);
-    padding: 16px 0 28px;
-  }
-
-  body.is-standalone-app .page-shell {
-    padding-top: calc(12px + env(safe-area-inset-top));
-  }
-
-  body::before {
-    width: 280px;
-    height: 280px;
-    top: -100px;
-    right: -80px;
-  }
-
-  body::after {
-    width: 220px;
-    height: 220px;
-    left: -90px;
-    bottom: -80px;
-  }
-
-  h1 {
-    max-width: 100%;
-    font-size: clamp(1.5rem, 6.2vw, 2rem);
-    line-height: 1.12;
-  }
-
-  .hero-appbar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  .hero-subeyebrow {
-    font-size: 0.9rem;
-  }
-
-  .install-chip {
-    min-height: 34px;
-    padding: 0 12px;
-    font-size: 0.8rem;
-  }
-
-  .hero-intro {
-    margin-top: 12px;
-    font-size: 0.92rem;
-    line-height: 1.6;
-  }
-
-  .hero-actions {
-    gap: 8px;
-    margin-top: 14px;
-  }
-
-  .upload-button,
-  .secondary-button,
-  .source-pill {
-    width: 100%;
-    min-height: 40px;
-  }
-
-  .source-pill {
-    justify-content: center;
-    padding: 0 12px;
-    font-size: 0.86rem;
-  }
-
-  .hero-note {
-    gap: 10px;
-    padding: 16px;
-  }
-
-  .hero-note p {
-    font-size: 0.78rem;
-  }
-
-  .hero-note-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 10px;
-  }
-
-  .hero-note strong {
-    font-size: 0.88rem;
-  }
-
-  .layout {
-    gap: 12px;
-  }
-
-  .filters,
-  .results {
-    gap: 12px;
-  }
-
-  .panel,
-  .hall-card {
-    padding: 16px;
-  }
-
-  .favorite-card {
-    padding: 16px;
-  }
-
-  .card-list {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .featured-value {
-    font-size: 1.12rem;
-  }
-
-  .formula-text {
-    font-size: 0.84rem;
-  }
+let halls = Array.isArray(window.WEDDING_HALLS) ? [...window.WEDDING_HALLS] : [];
+const builtinHalls = Array.isArray(window.WEDDING_HALLS) ? [...window.WEDDING_HALLS] : [];
+const DEFAULT_WORKBOOK_FILES = ["웨딩홀 정보.xlsx", "seoul_wedding_master_final_pro.xlsx"];
+const TEMPLATE_SHEET_NAME = "웨딩홀_추가양식";
+
+const mealPriceInput = document.querySelector("#mealPriceInput");
+const guestCountInput = document.querySelector("#guestCountInput");
+const rentPriceInput = document.querySelector("#rentPriceInput");
+const districtSelect = document.querySelector("#districtSelect");
+const sortSelect = document.querySelector("#sortSelect");
+const resetButton = document.querySelector("#resetButton");
+const excelUpload = document.querySelector("#excelUpload");
+const reloadBuiltinButton = document.querySelector("#reloadBuiltinButton");
+const dataSourceLabel = document.querySelector("#dataSourceLabel");
+const uploadStatus = document.querySelector("#uploadStatus");
+const updateBanner = document.querySelector("#updateBanner");
+const updateBannerMessage = document.querySelector("#updateBannerMessage");
+const updateRefreshButton = document.querySelector("#updateRefreshButton");
+const updateDismissButton = document.querySelector("#updateDismissButton");
+const favoriteSummary = document.querySelector("#favoriteSummary");
+const favoriteCountBadge = document.querySelector("#favoriteCountBadge");
+const exportShareButton = document.querySelector("#exportShareButton");
+const importShareInput = document.querySelector("#importShareInput");
+const clearFavoritesButton = document.querySelector("#clearFavoritesButton");
+const favoriteList = document.querySelector("#favoriteList");
+
+const totalCount = document.querySelector("#totalCount");
+const resultCount = document.querySelector("#resultCount");
+const avgMealPrice = document.querySelector("#avgMealPrice");
+const avgRentPrice = document.querySelector("#avgRentPrice");
+const avgTotalCost = document.querySelector("#avgTotalCost");
+const minTotalCost = document.querySelector("#minTotalCost");
+const pricingBasis = document.querySelector("#pricingBasis");
+const costFormulaText = document.querySelector("#costFormulaText");
+const costBasisBadge = document.querySelector("#costBasisBadge");
+const activeSummary = document.querySelector("#activeSummary");
+const cardList = document.querySelector("#cardList");
+const resultTableBody = document.querySelector("#resultTableBody");
+
+const FAVORITES_STORAGE_KEY = "weddingpick-favorites";
+const MEMOS_STORAGE_KEY = "weddingpick-user-memos";
+const SHARE_FILE_VERSION = 1;
+
+let pendingUpdateRegistration = null;
+let favoriteEntries = [];
+let shouldPersistMigratedFavorites = false;
+let memoByHallKey = {};
 
-  th,
-  td {
-    padding: 12px 9px;
-    font-size: 0.84rem;
+const numberFormatter = new Intl.NumberFormat("ko-KR");
+const textDecoder = new TextDecoder("utf-8");
+
+const formatMoney = (value) => (typeof value === "number" && Number.isFinite(value) ? `${numberFormatter.format(value)}원` : "-");
+const formatCount = (value) => (typeof value === "number" && Number.isFinite(value) ? `${numberFormatter.format(value)}명` : "-");
+const formatHallCount = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return `${numberFormatter.format(value)}개`;
   }
 
-  .stat-grid div {
-    padding: 12px;
-    border-radius: 18px;
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
   }
 
-  .stat-grid strong {
-    font-size: 1.05rem;
-  }
-
-  .field {
-    margin-bottom: 14px;
-  }
-
-  .field small,
-  .upload-status,
-  .cost-info-panel p,
-  #activeSummary,
-  .hall-address,
-  .card-note {
-    font-size: 0.86rem;
-    line-height: 1.45;
-  }
-
-  .field span,
-  .panel h2 {
-    font-size: 0.96rem;
-  }
-
-  input,
-  select {
-    padding: 12px 13px;
-    border-radius: 14px;
-  }
-
-  .featured-price,
-  .summary-highlight {
-    padding: 12px 14px;
-    border-radius: 16px;
-  }
-}
-
-@media (max-width: 640px) {
-  .hero-copy,
-  .hero-note,
-  .panel {
-    border-radius: 24px;
-  }
-
-  .hero-copy,
-  .hero-note,
-  .panel,
-  .hall-card {
-    padding: 14px;
-  }
-
-  .stat-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .card-list {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-copy::after {
-    display: none;
-  }
-
-  .hero-mark {
-    width: 46px;
-    height: 46px;
-    border-radius: 15px;
-    font-size: 0.9rem;
-  }
+  return "-";
+};
 
-  .hero {
-    gap: 10px;
-    margin-bottom: 14px;
+const formatHallCountChip = (value, fallback = "-") => {
+  const formatted = formatHallCount(value);
+  if (formatted === "-") {
+    return fallback;
   }
 
-  .hero-actions {
-    margin-top: 12px;
-  }
-
-  .panel-head {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-
-  .ghost-button {
-    width: 100%;
-  }
-
-  .favorite-card-top {
-    flex-direction: column;
-  }
-}
-
-@media (max-width: 480px) {
-  .update-banner {
-    padding: 14px;
-    border-radius: 18px;
-  }
-
-  .update-banner-actions {
-    width: 100%;
-  }
+  return formatted.endsWith("홀") ? formatted : `${formatted} 홀`;
+};
 
-  .update-banner-primary,
-  .update-banner-secondary {
-    width: 100%;
+const formatCeremonyInterval = (value, fallback = "-") => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return `${numberFormatter.format(value)}분`;
   }
 
-  .page-shell {
-    width: calc(100% - 12px);
-    padding: 10px 0 22px;
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    return fallback;
   }
 
-  .hero-copy,
-  .hero-note,
-  .panel,
-  .hall-card {
-    padding: 12px;
-    border-radius: 18px;
-  }
+  return normalized.endsWith("분") ? normalized : `${normalized}분`;
+};
 
-  h1 {
-    font-size: 1.35rem;
-  }
+const parseIntValue = (value) => {
+  const normalized = String(value ?? "")
+    .replaceAll(",", "")
+    .trim();
 
-  .hero-note {
-    padding-top: 12px;
-    padding-bottom: 12px;
+  if (!normalized || normalized === "-" || normalized === "#VALUE!") {
+    return null;
   }
 
-  .hero-brand {
-    align-items: flex-start;
-  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? Math.round(parsed) : null;
+};
 
-  .hero-subeyebrow {
-    font-size: 0.84rem;
-    line-height: 1.45;
-  }
+const hasMeaningfulValue = (value) => value !== "" && value !== null && value !== undefined;
 
-  .hero-intro {
-    font-size: 0.86rem;
-  }
+const getElementsByLocalName = (parent, name) => Array.from(parent.getElementsByTagNameNS("*", name));
 
-  .hero-quick-card {
-    padding: 13px 14px;
-    border-radius: 18px;
-  }
+const getFirstChildByLocalName = (parent, name) =>
+  Array.from(parent.childNodes).find((node) => node.nodeType === Node.ELEMENT_NODE && node.localName === name) || null;
 
-  .hero-quick-card strong {
-    font-size: 0.9rem;
+const colToIndex = (ref) => {
+  const match = String(ref).match(/[A-Z]+/);
+  const column = match ? match[0] : "";
+  let index = 0;
+  for (const char of column) {
+    index = index * 26 + (char.charCodeAt(0) - 64);
   }
+  return index - 1;
+};
 
-  .hero-note-grid {
-    grid-template-columns: 1fr;
-  }
+const sanitizeText = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+}[char]));
 
-  .cost-info-badges span,
-  .cost-breakdown span,
-  .meta span,
-  .favorite-card-meta span,
-  .hall-info-strip span,
-  .card-links a,
-  .badge {
-    width: 100%;
-    justify-content: center;
-    font-size: 0.8rem;
-    min-height: 30px;
-    padding: 6px 8px;
+const getDisplayText = (value, fallback = "-") => {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
   }
 
-  .card-top {
-    flex-direction: column;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
   }
 
-  .featured-value {
-    font-size: 1.02rem;
-  }
+  return fallback;
+};
 
-  .featured-label,
-  .stat-label {
-    font-size: 0.8rem;
-  }
+const matchesHallTone = (hall, toneKeyword) => String(hall.hallTone || "").includes(toneKeyword);
 
-  .upload-button,
-  .secondary-button,
-  .source-pill,
-  .ghost-button,
-  .favorite-count-badge {
-    min-height: 38px;
-    font-size: 0.84rem;
+const getEstimateGuestCount = (hall, guestCount) => {
+  if (guestCount) {
+    return guestCount;
   }
+  return hall.minimumGuarantee ?? null;
+};
 
-  .source-pill {
-    font-size: 0.8rem;
-  }
+const buildHallKey = (hall) =>
+  [hall.name, hall.address || hall.district || ""]
+    .map((value) => String(value ?? "").trim().toLowerCase())
+    .join("::");
+
+const getFavoriteKey = (hall) => String(hall?.favoriteKey || buildHallKey(hall)).trim();
 
-  .favorites-panel-actions {
-    width: 100%;
+const getPreferredSnapshotValue = (snapshotValue, liveValue) => {
+  if (typeof snapshotValue === "string") {
+    return snapshotValue.trim() ? snapshotValue : liveValue;
   }
 
-  .favorites-panel-actions .ghost-button,
-  .favorites-panel-actions .secondary-button,
-  .favorite-count-badge {
-    width: 100%;
-    justify-content: center;
+  if (typeof snapshotValue === "number") {
+    return Number.isFinite(snapshotValue) ? snapshotValue : liveValue;
   }
+
+  return hasMeaningfulValue(snapshotValue) ? snapshotValue : liveValue;
+};
+
+const loadUserMemos = () => {
+  if (typeof window.localStorage === "undefined") {
+    return {};
+  }
+
+  try {
+    return normalizeMemoMap(JSON.parse(window.localStorage.getItem(MEMOS_STORAGE_KEY) || "{}"));
+  } catch (error) {
+    return {};
+  }
+};
 
-  th,
-  td {
-    font-size: 0.8rem;
-  }
-}
+const saveUserMemos = () => {
+  if (typeof window.localStorage === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(MEMOS_STORAGE_KEY, JSON.stringify(memoByHallKey));
+  } catch (error) {
+    // Ignore storage failures so the main experience keeps working.
+  }
+};
+
+const buildFavoriteLookup = () => {
+  const lookup = new Map();
+  [...halls, ...builtinHalls].forEach((hall) => {
+    lookup.set(buildHallKey(hall), hall);
+  });
+  return lookup;
+};
+
+const getUserMemo = (hall) => memoByHallKey[getFavoriteKey(hall)] || "";
+
+const updateUserMemoByKey = (hallKey, memo) => {
+  const normalizedKey = String(hallKey || "").trim();
+  if (!normalizedKey) {
+    return;
+  }
+
+  const nextMemo = String(memo ?? "").replace(/\r\n/g, "\n");
+  const nextMemoMap = { ...memoByHallKey };
+
+  if (nextMemo.trim()) {
+    nextMemoMap[normalizedKey] = nextMemo;
+  } else {
+    delete nextMemoMap[normalizedKey];
+  }
+
+  memoByHallKey = nextMemoMap;
+  saveUserMemos();
+};
+
+const getHallSnapshot = (hall) => ({
+  favoriteKey: getFavoriteKey(hall),
+  id: hall.id ?? null,
+  name: hall.name ?? "",
+  district: hall.district ?? "",
+  address: hall.address ?? "",
+  hallType: hall.hallType ?? "",
+  hallTone: hall.hallTone ?? "",
+  ceremonyType: hall.ceremonyType ?? "",
+  ceremonyTime: hall.ceremonyTime ?? "",
+  hallCount: hall.hallCount ?? null,
+  menu: hall.menu ?? "",
+  mealPrice: hall.mealPrice ?? null,
+  mealStartPrice: hall.mealStartPrice ?? null,
+  mealAveragePrice: hall.mealAveragePrice ?? null,
+  mealRange: hall.mealRange ?? "",
+  minimumGuarantee: hall.minimumGuarantee ?? null,
+  maxCapacity: hall.maxCapacity ?? null,
+  rentPrice: hall.rentPrice ?? null,
+  baseRentPrice: hall.baseRentPrice ?? null,
+  minimumRentPrice: hall.minimumRentPrice ?? null,
+  stylingPrice: hall.stylingPrice ?? null,
+  flowerPrice: hall.flowerPrice ?? null,
+  parking: hall.parking ?? "",
+  subwayAccess: hall.subwayAccess ?? "",
+  homepage: hall.homepage ?? "",
+  naverMap: hall.naverMap ?? "",
+  memo: hall.memo ?? "",
+  zone: hall.zone ?? "",
+  tags: hall.tags ?? "",
+  budgetBand: hall.budgetBand ?? "",
+});
+
+const normalizeMemoMap = (rawMemoMap) => {
+  if (!rawMemoMap || typeof rawMemoMap !== "object" || Array.isArray(rawMemoMap)) {
+    return {};
+  }
+
+  return Object.entries(rawMemoMap).reduce((accumulator, [hallKey, memo]) => {
+    const normalizedKey = String(hallKey || "").trim();
+    const normalizedMemo = typeof memo === "string" ? memo : "";
+    if (normalizedKey && normalizedMemo.trim()) {
+      accumulator[normalizedKey] = normalizedMemo;
+    }
+    return accumulator;
+  }, {});
+};
+
+const hydrateFavoriteSnapshot = (snapshot, hallLookup) => {
+  const liveHall = hallLookup.get(snapshot.favoriteKey);
+  if (!liveHall) {
+    return { snapshot, changed: false };
+  }
+
+  const liveSnapshot = getHallSnapshot(liveHall);
+  const mergedSnapshot = { ...snapshot };
+  let changed = false;
+
+  [
+    "name",
+    "district",
+    "address",
+    "hallType",
+    "hallTone",
+    "ceremonyType",
+    "ceremonyTime",
+    "hallCount",
+    "menu",
+    "mealPrice",
+    "mealStartPrice",
+    "mealAveragePrice",
+    "mealRange",
+    "minimumGuarantee",
+    "maxCapacity",
+    "rentPrice",
+    "baseRentPrice",
+    "minimumRentPrice",
+    "stylingPrice",
+    "flowerPrice",
+    "parking",
+    "subwayAccess",
+    "homepage",
+    "naverMap",
+    "memo",
+    "zone",
+    "tags",
+    "budgetBand",
+  ].forEach((field) => {
+    const nextValue = getPreferredSnapshotValue(snapshot[field], liveSnapshot[field]);
+    if (nextValue !== snapshot[field]) {
+      mergedSnapshot[field] = nextValue;
+      changed = true;
+    }
+  });
+
+  return { snapshot: mergedSnapshot, changed };
+};
+
+const normalizeFavoriteEntries = (items, hallLookup) => {
+  if (!Array.isArray(items)) {
+    return { entries: [], changed: false };
+  }
+
+  const uniqueEntries = [];
+  let changed = false;
+
+  items.forEach((item) => {
+    let snapshot = null;
+
+    if (typeof item === "string") {
+      const matchedHall = hallLookup.get(item);
+      if (matchedHall) {
+        snapshot = getHallSnapshot(matchedHall);
+        changed = true;
+      }
+    } else if (item && typeof item === "object") {
+      const sourceHall = item.hall && typeof item.hall === "object" ? item.hall : item;
+      const favoriteKey = String(item.key || sourceHall.favoriteKey || buildHallKey(sourceHall)).trim();
+      if (favoriteKey) {
+        snapshot = {
+          ...getHallSnapshot(sourceHall),
+          favoriteKey,
+        };
+      }
+    }
+
+    if (!snapshot || !snapshot.favoriteKey) {
+      return;
+    }
+
+    const hydratedSnapshot = hydrateFavoriteSnapshot(snapshot, hallLookup);
+    snapshot = hydratedSnapshot.snapshot;
+    if (hydratedSnapshot.changed) {
+      changed = true;
+    }
+
+    const existingIndex = uniqueEntries.findIndex((entry) => entry.favoriteKey === snapshot.favoriteKey);
+    if (existingIndex === -1) {
+      uniqueEntries.push(snapshot);
+    } else {
+      uniqueEntries[existingIndex] = snapshot;
+    }
+  });
+
+  return { entries: uniqueEntries, changed };
+};
+
+const loadFavoriteEntries = () => {
+  if (typeof window.localStorage === "undefined") {
+    return [];
+  }
+
+  try {
+    shouldPersistMigratedFavorites = false;
+    const hallLookup = buildFavoriteLookup();
+    const parsed = JSON.parse(window.localStorage.getItem(FAVORITES_STORAGE_KEY) || "[]");
+    const normalizedResult = normalizeFavoriteEntries(parsed, hallLookup);
+    shouldPersistMigratedFavorites = normalizedResult.changed;
+    return normalizedResult.entries;
+  } catch (error) {
+    return [];
+  }
+};
+
+const saveFavoriteEntries = () => {
+  if (typeof window.localStorage === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoriteEntries));
+  } catch (error) {
+    // Ignore storage failures so the main experience keeps working.
+  }
+};
+
+const isFavoriteHall = (hall) => favoriteEntries.some((entry) => entry.favoriteKey === getFavoriteKey(hall));
+
+const toggleFavoriteHall = (hall) => {
+  const favoriteKey = getFavoriteKey(hall);
+  if (!favoriteKey) {
+    return;
+  }
+
+  if (isFavoriteHall(hall)) {
+    favoriteEntries = favoriteEntries.filter((entry) => entry.favoriteKey !== favoriteKey);
+  } else {
+    favoriteEntries = [getHallSnapshot(hall), ...favoriteEntries.filter((entry) => entry.favoriteKey !== favoriteKey)];
+  }
+
+  saveFavoriteEntries();
+  update();
+};
+
+const toggleFavoriteHallByKey = (hallKey) => {
+  if (!hallKey) {
+    return;
+  }
+
+  const existingFavorite = favoriteEntries.find((entry) => entry.favoriteKey === hallKey);
+  if (existingFavorite) {
+    favoriteEntries = favoriteEntries.filter((entry) => entry.favoriteKey !== hallKey);
+    saveFavoriteEntries();
+    update();
+    return;
+  }
+
+  const matchedHall = halls.find((hall) => buildHallKey(hall) === hallKey) || builtinHalls.find((hall) => buildHallKey(hall) === hallKey);
+  if (!matchedHall) {
+    return;
+  }
+
+  favoriteEntries = [getHallSnapshot(matchedHall), ...favoriteEntries];
+  saveFavoriteEntries();
+  update();
+};
+
+const clearAllFavorites = () => {
+  favoriteEntries = [];
+  saveFavoriteEntries();
+  update();
+};
+
+const getFavoriteHalls = () => [...favoriteEntries];
+
+const buildSharePayload = () => ({
+  version: SHARE_FILE_VERSION,
+  exportedAt: new Date().toISOString(),
+  app: "weddingpick",
+  favorites: favoriteEntries,
+  memos: memoByHallKey,
+});
+
+const buildShareFileName = () => {
+  const now = new Date();
+  const parts = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+    "-",
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0"),
+  ];
+  return `weddingpick-share-${parts.join("")}.json`;
+};
+
+const exportSharedData = () => {
+  if (!favoriteEntries.length && !Object.keys(memoByHallKey).length) {
+    setSourceStatus("공유할 즐겨찾기나 메모가 아직 없습니다.", "is-error");
+    return;
+  }
+
+  const payload = JSON.stringify(buildSharePayload(), null, 2);
+  const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = blobUrl;
+  link.download = buildShareFileName();
+  document.body.append(link);
+  link.click();
+  link.remove();
+
+  window.setTimeout(() => {
+    URL.revokeObjectURL(blobUrl);
+  }, 1000);
+
+  setSourceStatus(
+    `공유 파일을 저장했습니다. 즐겨찾기 ${favoriteEntries.length}개와 메모 ${Object.keys(memoByHallKey).length}건이 포함됐습니다.`,
+    "is-success"
+  );
+};
+
+const mergeImportedFavoriteEntries = (importedEntries) => {
+  const mergedEntries = [...importedEntries];
+  favoriteEntries.forEach((entry) => {
+    if (!mergedEntries.some((importedEntry) => importedEntry.favoriteKey === entry.favoriteKey)) {
+      mergedEntries.push(entry);
+    }
+  });
+  return mergedEntries;
+};
+
+const importSharedData = async (file) => {
+  if (!file) {
+    return;
+  }
+
+  try {
+    const payload = JSON.parse(await file.text());
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new Error("공유 파일 형식이 올바르지 않습니다.");
+    }
+
+    const hallLookup = buildFavoriteLookup();
+    const importedFavoritesRaw = Array.isArray(payload.favorites)
+      ? payload.favorites
+      : Array.isArray(payload.favoriteEntries)
+        ? payload.favoriteEntries
+        : [];
+    const importedMemosRaw = payload.memos ?? payload.memoByHallKey ?? {};
+    const normalizedFavorites = normalizeFavoriteEntries(importedFavoritesRaw, hallLookup).entries;
+    const normalizedMemos = normalizeMemoMap(importedMemosRaw);
+
+    if (!normalizedFavorites.length && !Object.keys(normalizedMemos).length) {
+      throw new Error("공유 파일 안에 불러올 즐겨찾기나 메모가 없습니다.");
+    }
+
+    favoriteEntries = mergeImportedFavoriteEntries(normalizedFavorites);
+    memoByHallKey = {
+      ...memoByHallKey,
+      ...normalizedMemos,
+    };
+
+    saveFavoriteEntries();
+    saveUserMemos();
+    update();
+
+    setSourceStatus(
+      `공유 파일을 불러왔습니다. 즐겨찾기 ${normalizedFavorites.length}개와 메모 ${Object.keys(normalizedMemos).length}건을 합쳤습니다.`,
+      "is-success"
+    );
+  } catch (error) {
+    setSourceStatus(error instanceof Error ? error.message : "공유 파일을 불러오는 중 오류가 발생했습니다.", "is-error");
+  }
+};
+
+const getHallSourceNote = (hall) => String(hall.tags || hall.memo || "").trim();
+
+const renderSourceNote = (hall) => {
+  const note = getHallSourceNote(hall);
+  if (!note) {
+    return "";
+  }
+
+  return `<p class="card-note">${sanitizeText(note)}</p>`;
+};
+
+const renderUserMemoField = (hall) => `
+  <label class="memo-section">
+    <span class="memo-label">내 메모</span>
+    <textarea class="memo-textarea" data-memo-key="${sanitizeText(getFavoriteKey(hall))}" placeholder="이 웨딩홀에 대한 메모를 남겨보세요.">${sanitizeText(getUserMemo(hall))}</textarea>
+    <small class="memo-help">메모는 이 기기에 자동 저장되며 업데이트 후에도 유지됩니다.</small>
+  </label>
+`;
+
+const renderFavoriteButton = (hall, className = "") => {
+  const active = isFavoriteHall(hall);
+  const label = active ? "즐겨찾기 해제" : "즐겨찾기 추가";
+  const classes = `favorite-button ${className} ${active ? "is-active" : ""}`.trim();
+
+  return `
+    <button
+      type="button"
+      class="${classes}"
+      data-favorite-key="${sanitizeText(getFavoriteKey(hall))}"
+      aria-pressed="${active}"
+      aria-label="${label}"
+      title="${label}"
+    >
+      <span aria-hidden="true">${active ? "★" : "☆"}</span>
+    </button>
+  `;
+};
+
+const mergeHallRecord = (existing, incoming) => {
+  const merged = { ...existing };
+
+  Object.entries(incoming).forEach(([key, value]) => {
+    if (hasMeaningfulValue(value)) {
+      merged[key] = value;
+    }
+  });
+
+  merged.id = existing.id ?? incoming.id ?? null;
+  return merged;
+};
+
+const mergeHallDatasets = (baseHalls, additions) => {
+  const merged = [...baseHalls];
+  const indexByKey = new Map();
+  let maxId = merged.reduce((max, hall) => Math.max(max, hall.id ?? 0), 0);
+  let addedCount = 0;
+  let updatedCount = 0;
+
+  merged.forEach((hall, index) => {
+    indexByKey.set(buildHallKey(hall), index);
+  });
+
+  additions.forEach((hall) => {
+    if (!String(hall.name ?? "").trim()) {
+      return;
+    }
+
+    const key = buildHallKey(hall);
+    const existingIndex = indexByKey.get(key);
+
+    if (existingIndex !== undefined) {
+      merged[existingIndex] = mergeHallRecord(merged[existingIndex], hall);
+      updatedCount += 1;
+      return;
+    }
+
+    maxId += 1;
+    const nextHall = { ...hall, id: hall.id ?? maxId };
+    merged.push(nextHall);
+    indexByKey.set(key, merged.length - 1);
+    addedCount += 1;
+  });
+
+  return { halls: merged, addedCount, updatedCount };
+};
+
+const getEstimatedTotalCost = (hall, guestCount) => {
+  const effectiveGuests = getEstimateGuestCount(hall, guestCount);
+  if (!effectiveGuests || !hall.mealPrice) {
+    return null;
+  }
+
+  return (
+    effectiveGuests * hall.mealPrice +
+    (hall.rentPrice ?? 0) +
+    (hall.stylingPrice ?? 0) +
+    (hall.flowerPrice ?? 0)
+  );
+};
+
+const getCostFormulaLabel = (hall, guestCount) => {
+  const effectiveGuests = getEstimateGuestCount(hall, guestCount);
+  if (!effectiveGuests || !hall.mealPrice) {
+    return "산출 정보 부족";
+  }
+
+  const parts = [`${numberFormatter.format(effectiveGuests)}명 x ${formatMoney(hall.mealPrice)}`];
+
+  if (hall.rentPrice) {
+    parts.push(`대관료 ${formatMoney(hall.rentPrice)}`);
+  }
+  if (hall.stylingPrice) {
+    parts.push(`연출료 ${formatMoney(hall.stylingPrice)}`);
+  }
+  if (hall.flowerPrice) {
+    parts.push(`꽃장식 ${formatMoney(hall.flowerPrice)}`);
+  }
+
+  return parts.join(" + ");
+};
+
+const getFilters = () => ({
+  mealMax: Number(mealPriceInput.value) || null,
+  guests: Number(guestCountInput.value) || null,
+  rentMax: Number(rentPriceInput.value) || null,
+  district: districtSelect.value,
+  sort: sortSelect.value,
+});
+
+const matchesFilters = (hall, filters) => {
+  if (filters.mealMax && (!hall.mealPrice || hall.mealPrice > filters.mealMax)) {
+    return false;
+  }
+
+  if (filters.guests) {
+    if (!hall.minimumGuarantee || hall.minimumGuarantee > filters.guests) {
+      return false;
+    }
+    if (hall.maxCapacity && hall.maxCapacity < filters.guests) {
+      return false;
+    }
+  }
+
+  if (filters.rentMax && (!hall.rentPrice || hall.rentPrice > filters.rentMax)) {
+    return false;
+  }
+
+  if (filters.district && hall.district !== filters.district) {
+    return false;
+  }
+
+  if (filters.sort === "toneBright" && !matchesHallTone(hall, "밝은")) {
+    return false;
+  }
+
+  if (filters.sort === "toneDark" && !matchesHallTone(hall, "어두운")) {
+    return false;
+  }
+
+  if (filters.sort === "toneMixed" && !matchesHallTone(hall, "혼합")) {
+    return false;
+  }
+
+  return true;
+};
+
+const sortHalls = (items, filters) => {
+  const sorted = [...items];
+
+  switch (filters.sort) {
+    case "mealAsc":
+      sorted.sort((a, b) => (a.mealPrice ?? Infinity) - (b.mealPrice ?? Infinity));
+      break;
+    case "guaranteeAsc":
+      sorted.sort((a, b) => (a.minimumGuarantee ?? Infinity) - (b.minimumGuarantee ?? Infinity));
+      break;
+    case "rentAsc":
+      sorted.sort((a, b) => (a.rentPrice ?? Infinity) - (b.rentPrice ?? Infinity));
+      break;
+    case "totalAsc":
+      sorted.sort(
+        (a, b) => (getEstimatedTotalCost(a, filters.guests) ?? Infinity) - (getEstimatedTotalCost(b, filters.guests) ?? Infinity)
+      );
+      break;
+    case "toneBright":
+    case "toneDark":
+    case "toneMixed":
+    default:
+      sorted.sort(
+        (a, b) => (getEstimatedTotalCost(a, filters.guests) ?? Infinity) - (getEstimatedTotalCost(b, filters.guests) ?? Infinity)
+      );
+      break;
+  }
+
+  return sorted;
+};
+
+const buildSummary = (filters, results) => {
+  const parts = [];
+
+  if (filters.mealMax) {
+    parts.push(`식대 ${formatMoney(filters.mealMax)} 이하`);
+  }
+  if (filters.guests) {
+    parts.push(`하객 ${formatCount(filters.guests)} 기준 가능`);
+  }
+  if (filters.rentMax) {
+    parts.push(`대관료 ${formatMoney(filters.rentMax)} 이하`);
+  }
+  if (filters.district) {
+    parts.push(`${filters.district} 한정`);
+  }
+
+  if (filters.sort === "toneBright") {
+    parts.push("밝은홀만");
+  }
+
+  if (filters.sort === "toneDark") {
+    parts.push("어두운홀만");
+  }
+
+  if (filters.sort === "toneMixed") {
+    parts.push("혼합홀만");
+  }
+
+  if (!parts.length) {
+    return `전체 ${halls.length}개 웨딩홀을 보고 있습니다. 조건을 넣으면 식대, 보증인원, 대관료, 총비용 기준으로 바로 추려집니다.`;
+  }
+
+  return `${parts.join(" / ")} 조건으로 ${results.length}개 웨딩홀이 검색되었습니다.`;
+};
+
+const rebuildDistrictOptions = () => {
+  const selected = districtSelect.value;
+  const districts = [...new Set(halls.map((hall) => hall.district).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
+
+  districtSelect.innerHTML = '<option value="">전체</option>';
+  districts.forEach((district) => {
+    const option = document.createElement("option");
+    option.value = district;
+    option.textContent = district;
+    districtSelect.append(option);
+  });
+
+  if (districts.includes(selected)) {
+    districtSelect.value = selected;
+  }
+};
+
+favoriteEntries = loadFavoriteEntries();
+if (shouldPersistMigratedFavorites && favoriteEntries.length) {
+  saveFavoriteEntries();
+}
+memoByHallKey = loadUserMemos();
+
+const renderFavorites = (items, guestCount) => {
+  const storedFavoriteCount = favoriteEntries.length;
+
+  favoriteCountBadge.textContent = `${numberFormatter.format(storedFavoriteCount)}개`;
+  clearFavoritesButton.hidden = storedFavoriteCount === 0;
+
+  if (!storedFavoriteCount) {
+    favoriteSummary.textContent = "별 버튼을 눌러 마음에 드는 웨딩홀을 따로 모아보세요.";
+    favoriteList.innerHTML = `
+      <div class="empty-state favorite-empty-state">
+        아직 찜한 웨딩홀이 없습니다.<br />
+        검색 결과에서 별 버튼을 누르면 이곳에 자동으로 모입니다.
+      </div>
+    `;
+    return;
+  }
+
+  favoriteSummary.textContent = `총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀을 찜해두었습니다. 이후 데이터가 업데이트되어도 이 목록은 저장 당시 정보 기준으로 유지됩니다.`;
+
+  favoriteList.innerHTML = items
+    .map((hall) => `
+      <article class="favorite-card">
+        <div class="favorite-card-top">
+          <div>
+            <div class="favorite-card-heading">
+              <h3>${sanitizeText(hall.name)}</h3>
+              <span class="favorite-card-district">${sanitizeText(hall.district || "지역 정보 없음")}</span>
+            </div>
+            <p class="favorite-card-address">${sanitizeText(hall.address || "-")}</p>
+          </div>
+          ${renderFavoriteButton(hall, "favorite-card-button")}
+        </div>
+
+        <div class="favorite-card-price">
+          <span>예상 총비용</span>
+          <strong>${formatMoney(getEstimatedTotalCost(hall, guestCount))}</strong>
+        </div>
+
+        <div class="favorite-card-meta">
+          <span>식대 ${formatMoney(hall.mealPrice)}</span>
+          <span>최소보증 ${formatCount(hall.minimumGuarantee)}</span>
+          <span>대관료 ${formatMoney(hall.rentPrice)}</span>
+          <span>${sanitizeText(hall.hallType || "홀 정보 없음")}</span>
+          <span>${sanitizeText(hall.menu || "메뉴 미상")}</span>
+          <span>${sanitizeText(hall.hallTone || "톤 정보 없음")}</span>
+          <span>${sanitizeText(getDisplayText(hall.ceremonyType, "예식형태 미입력"))}</span>
+          <span>${sanitizeText(formatCeremonyInterval(hall.ceremonyTime, "간격 미입력"))}</span>
+          <span>${sanitizeText(formatHallCountChip(hall.hallCount, "홀수 미입력"))}</span>
+        </div>
+
+        <p class="favorite-card-formula">${sanitizeText(getCostFormulaLabel(hall, guestCount))}</p>
+        ${renderSourceNote(hall)}
+        ${renderUserMemoField(hall)}
+
+        <div class="card-links">
+          ${hall.homepage ? `<a href="${sanitizeText(hall.homepage)}" target="_blank" rel="noreferrer">홈페이지</a>` : ""}
+          ${hall.naverMap ? `<a href="${sanitizeText(hall.naverMap)}" target="_blank" rel="noreferrer">네이버지도</a>` : ""}
+        </div>
+      </article>
+    `)
+    .join("");
+};
+
+const renderCards = (items, guestCount) => {
+  if (!items.length) {
+    cardList.innerHTML = `
+      <div class="empty-state">
+        조건에 맞는 웨딩홀이 없습니다.<br />
+        식대나 대관료 상한을 조금 넓혀보거나 지역 제한을 해제해보세요.
+      </div>
+    `;
+    return;
+  }
+
+  cardList.innerHTML = items
+    .map((hall, index) => {
+      const estimatedGuests = getEstimateGuestCount(hall, guestCount);
+      const totalCost = getEstimatedTotalCost(hall, guestCount);
+
+      return `
+        <article class="hall-card" style="animation-delay:${index * 0.04}s">
+          <div class="card-top">
+            <div class="card-top-main">
+              <span class="badge">${sanitizeText(hall.zone || "기타")} · ${sanitizeText(hall.hallType || "정보없음")}</span>
+            </div>
+            ${renderFavoriteButton(hall, "card-favorite-button")}
+          </div>
+          <h3>${sanitizeText(hall.name)}</h3>
+          <p class="hall-address">${sanitizeText(hall.address || "-")}</p>
+
+          <div class="featured-price">
+            <span class="featured-label">예상 총비용</span>
+            <strong class="featured-value">${formatMoney(totalCost)}</strong>
+          </div>
+
+          <p class="formula-text">${sanitizeText(getCostFormulaLabel(hall, guestCount))}</p>
+
+          <div class="cost-breakdown">
+            <span>기준 인원 ${formatCount(estimatedGuests)}</span>
+            <span>식대 ${formatMoney(hall.mealPrice)}</span>
+            <span>대관료 ${formatMoney(hall.rentPrice)}</span>
+          </div>
+
+          <div class="meta">
+            <span>최소보증 ${formatCount(hall.minimumGuarantee)}</span>
+            <span>최대수용 ${formatCount(hall.maxCapacity)}</span>
+            <span>${sanitizeText(hall.menu || "메뉴 미상")}</span>
+            <span>${sanitizeText(hall.hallTone || "톤 정보 없음")}</span>
+            <span>${sanitizeText(getDisplayText(hall.ceremonyType, "예식형태 미입력"))}</span>
+            <span>${sanitizeText(formatCeremonyInterval(hall.ceremonyTime, "간격 미입력"))}</span>
+            <span>${sanitizeText(formatHallCountChip(hall.hallCount, "홀수 미입력"))}</span>
+          </div>
+
+          ${renderSourceNote(hall)}
+          ${renderUserMemoField(hall)}
+
+          <div class="card-links">
+          ${hall.homepage ? `<a href="${sanitizeText(hall.homepage)}" target="_blank" rel="noreferrer">홈페이지</a>` : ""}
+            ${hall.naverMap ? `<a href="${sanitizeText(hall.naverMap)}" target="_blank" rel="noreferrer">네이버지도</a>` : ""}
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+};
+
+const renderTable = (items, guestCount) => {
+  if (!items.length) {
+    resultTableBody.innerHTML = `
+      <tr>
+        <td colspan="12">검색 결과가 없습니다.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  resultTableBody.innerHTML = items
+    .map((hall) => `
+      <tr>
+        <td class="table-name-cell">
+          ${renderFavoriteButton(hall, "table-favorite-button")}
+          <span class="table-name">${sanitizeText(hall.name)}</span>
+        </td>
+        <td>${sanitizeText(hall.district || "-")}</td>
+        <td>${sanitizeText(getDisplayText(hall.ceremonyType, "-"))}</td>
+        <td>${sanitizeText(formatCeremonyInterval(hall.ceremonyTime, "-"))}</td>
+        <td>${sanitizeText(formatHallCountChip(hall.hallCount, "-"))}</td>
+        <td>${formatMoney(hall.mealPrice)}</td>
+        <td>${formatCount(hall.minimumGuarantee)}</td>
+        <td>${formatCount(hall.maxCapacity)}</td>
+        <td>${formatMoney(hall.rentPrice)}</td>
+        <td>${sanitizeText(getCostFormulaLabel(hall, guestCount))}</td>
+        <td>${formatMoney(getEstimatedTotalCost(hall, guestCount))}</td>
+        <td>${hall.homepage ? `<a href="${sanitizeText(hall.homepage)}" target="_blank" rel="noreferrer">바로가기</a>` : "-"}</td>
+      </tr>
+    `)
+    .join("");
+};
+
+const renderStats = (items, guestCount) => {
+  totalCount.textContent = numberFormatter.format(halls.length);
+  resultCount.textContent = numberFormatter.format(items.length);
+
+  const mealValues = items.map((hall) => hall.mealPrice).filter((value) => typeof value === "number");
+  const rentValues = items.map((hall) => hall.rentPrice).filter((value) => typeof value === "number");
+  const totalValues = items.map((hall) => getEstimatedTotalCost(hall, guestCount)).filter((value) => typeof value === "number");
+
+  const mealAverage = mealValues.length ? Math.round(mealValues.reduce((sum, value) => sum + value, 0) / mealValues.length) : null;
+  const rentAverage = rentValues.length ? Math.round(rentValues.reduce((sum, value) => sum + value, 0) / rentValues.length) : null;
+  const totalAverage = totalValues.length ? Math.round(totalValues.reduce((sum, value) => sum + value, 0) / totalValues.length) : null;
+  const totalMinimum = totalValues.length ? Math.min(...totalValues) : null;
+
+  avgMealPrice.textContent = mealAverage ? formatMoney(mealAverage) : "-";
+  avgRentPrice.textContent = rentAverage ? formatMoney(rentAverage) : "-";
+  avgTotalCost.textContent = totalAverage ? formatMoney(totalAverage) : "-";
+  minTotalCost.textContent = totalMinimum ? formatMoney(totalMinimum) : "-";
+  pricingBasis.textContent = guestCount ? `${formatCount(guestCount)} 기준` : "최소보증인원 기준";
+  costBasisBadge.textContent = guestCount ? `기준 인원: ${formatCount(guestCount)}` : "기준 인원: 최소보증인원";
+  costFormulaText.textContent = guestCount
+    ? `총비용 = ${formatCount(guestCount)} x 식대 + 대관료 + 연출료 + 꽃장식`
+    : "총비용 = 최소보증인원 x 식대 + 대관료 + 연출료 + 꽃장식";
+};
+
+const update = () => {
+  const filters = getFilters();
+  const filtered = halls.filter((hall) => matchesFilters(hall, filters));
+  const sorted = sortHalls(filtered, filters);
+  const favoriteItems = getFavoriteHalls();
+
+  activeSummary.textContent = buildSummary(filters, sorted);
+  renderStats(sorted, filters.guests);
+  renderFavorites(favoriteItems, filters.guests);
+  renderCards(sorted, filters.guests);
+  renderTable(sorted, filters.guests);
+};
+
+const resetFilters = () => {
+  mealPriceInput.value = "";
+  guestCountInput.value = "";
+  rentPriceInput.value = "";
+  districtSelect.value = "";
+  sortSelect.value = "totalAsc";
+  update();
+};
+
+const setSourceStatus = (message, type = "") => {
+  uploadStatus.textContent = message;
+  uploadStatus.className = "upload-status";
+  if (type) {
+    uploadStatus.classList.add(type);
+  }
+};
+
+const showUpdateBanner = (message, registration) => {
+  pendingUpdateRegistration = registration ?? pendingUpdateRegistration;
+  if (updateBannerMessage) {
+    updateBannerMessage.textContent = message;
+  }
+  if (updateBanner) {
+    updateBanner.hidden = false;
+  }
+};
+
+const hideUpdateBanner = () => {
+  if (updateBanner) {
+    updateBanner.hidden = true;
+  }
+};
+
+const applyPendingUpdate = () => {
+  const waitingWorker = pendingUpdateRegistration?.waiting;
+  if (waitingWorker) {
+    waitingWorker.postMessage({ type: "SKIP_WAITING" });
+    return;
+  }
+  window.location.reload();
+};
+
+const normalizeRecords = (records) =>
+  records.map((item) => {
+    const mealAveragePrice = parseIntValue(item["식대 평균가(원)"]);
+    const mealStartPrice = parseIntValue(item["식대 시작가(원)"]);
+    const minimumRentPrice = parseIntValue(item["최소 대관료(원)"]);
+    const baseRentPrice = parseIntValue(item["대관료(원)"]);
+    const rawHallCount = item.홀수 || item["홀수"] || item["홀 수"] || item["홀수(개)"] || "";
+    const parsedHallCount = parseIntValue(rawHallCount);
+    const ceremonyInterval = item["예식간격(분)"] || item.예식시간 || item["예식 시간"] || "";
+
+    return {
+      id: parseIntValue(item.ID),
+      name: item["웨딩홀 이름"] || "",
+      district: item.구 || "",
+      address: item.주소 || "",
+      hallType: item.홀타입 || "",
+      hallTone: item["홀톤(밝은/어두운/혼합)"] || "",
+      ceremonyType: item.예식형태 || "",
+      ceremonyTime: ceremonyInterval,
+      hallCount: parsedHallCount ?? (String(rawHallCount).trim() || null),
+      menu: item.메뉴 || "",
+      mealPrice: mealAveragePrice ?? mealStartPrice,
+      mealStartPrice,
+      mealAveragePrice,
+      mealRange: item["식대 범위"] || "",
+      minimumGuarantee: parseIntValue(item.최소보증인원),
+      maxCapacity: parseIntValue(item.최대수용인원),
+      rentPrice: minimumRentPrice ?? baseRentPrice,
+      baseRentPrice,
+      minimumRentPrice,
+      stylingPrice: parseIntValue(item["연출료(원)"]),
+      flowerPrice: parseIntValue(item["꽃장식(원)"]),
+      parking: item.주차 || "",
+      subwayAccess: item["지하철/접근"] || "",
+      homepage: item["공식 홈페이지"] || "",
+      naverMap: item.네이버지도 || "",
+      memo: item.메모 || "",
+      zone: item.권역 || "",
+      tags: item.분위기태그 || "",
+      budgetBand: item.예산밴드 || "",
+    };
+  });
+
+const xmlToDocument = (text) => new DOMParser().parseFromString(text, "application/xml");
+
+const findEndOfCentralDirectory = (view) => {
+  for (let index = view.byteLength - 22; index >= 0; index -= 1) {
+    if (view.getUint32(index, true) === 0x06054b50) {
+      return index;
+    }
+  }
+  throw new Error("ZIP 형식을 읽을 수 없습니다.");
+};
+
+const inflateRaw = async (uint8Array) => {
+  const stream = new Blob([uint8Array]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  const buffer = await new Response(stream).arrayBuffer();
+  return new Uint8Array(buffer);
+};
+
+const unzipXlsxBuffer = async (buffer) => {
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("이 브라우저는 엑셀 직접 업로드를 지원하지 않습니다. 크롬이나 최신 엣지에서 열어주세요.");
+  }
+
+  const view = new DataView(buffer);
+  const eocdOffset = findEndOfCentralDirectory(view);
+  const totalEntries = view.getUint16(eocdOffset + 10, true);
+  const centralDirectoryOffset = view.getUint32(eocdOffset + 16, true);
+  const files = new Map();
+  let pointer = centralDirectoryOffset;
+
+  for (let index = 0; index < totalEntries; index += 1) {
+    if (view.getUint32(pointer, true) !== 0x02014b50) {
+      throw new Error("ZIP 중앙 디렉터리를 읽는 중 오류가 발생했습니다.");
+    }
+
+    const compressionMethod = view.getUint16(pointer + 10, true);
+    const compressedSize = view.getUint32(pointer + 20, true);
+    const fileNameLength = view.getUint16(pointer + 28, true);
+    const extraFieldLength = view.getUint16(pointer + 30, true);
+    const fileCommentLength = view.getUint16(pointer + 32, true);
+    const localHeaderOffset = view.getUint32(pointer + 42, true);
+    const fileNameBytes = new Uint8Array(buffer, pointer + 46, fileNameLength);
+    const fileName = textDecoder.decode(fileNameBytes);
+
+    const localNameLength = view.getUint16(localHeaderOffset + 26, true);
+    const localExtraLength = view.getUint16(localHeaderOffset + 28, true);
+    const dataStart = localHeaderOffset + 30 + localNameLength + localExtraLength;
+    const compressedData = new Uint8Array(buffer, dataStart, compressedSize);
+
+    let contentBytes;
+    if (compressionMethod === 0) {
+      contentBytes = compressedData;
+    } else if (compressionMethod === 8) {
+      contentBytes = await inflateRaw(compressedData);
+    } else {
+      throw new Error(`지원하지 않는 압축 방식입니다: ${compressionMethod}`);
+    }
+
+    files.set(fileName, textDecoder.decode(contentBytes));
+    pointer += 46 + fileNameLength + extraFieldLength + fileCommentLength;
+  }
+
+  return files;
+};
+
+const getWorkbookSheetPaths = (files, workbookDoc) => {
+  const relsDoc = xmlToDocument(files.get("xl/_rels/workbook.xml.rels") || "");
+  const relationships = new Map();
+
+  getElementsByLocalName(relsDoc, "Relationship").forEach((rel) => {
+    relationships.set(rel.getAttribute("Id"), rel.getAttribute("Target"));
+  });
+
+  return new Map(
+    getElementsByLocalName(workbookDoc, "sheet").map((sheet) => {
+      const relationshipId = sheet.getAttribute("r:id") || sheet.getAttributeNS("*", "id");
+      const relativePath = relationships.get(relationshipId);
+
+      if (!relativePath) {
+        throw new Error("시트 경로를 찾을 수 없습니다.");
+      }
+
+      return [sheet.getAttribute("name"), `xl/${relativePath.replace(/^\/?xl\//, "")}`];
+    })
+  );
+};
+
+const parseSharedStrings = (files) => {
+  const xml = files.get("xl/sharedStrings.xml");
+  if (!xml) {
+    return [];
+  }
+
+  const doc = xmlToDocument(xml);
+  return getElementsByLocalName(doc, "si").map((item) =>
+    getElementsByLocalName(item, "t")
+      .map((textNode) => textNode.textContent || "")
+      .join("")
+  );
+};
+
+const parseWorksheetRecords = (worksheetDoc, sharedStrings) => {
+  const rows = getElementsByLocalName(worksheetDoc, "row");
+  const matrix = rows.map((row) => {
+    const cells = {};
+    let maxIndex = -1;
+
+    Array.from(row.children).forEach((cell) => {
+      if (cell.localName !== "c") {
+        return;
+      }
+
+      const ref = cell.getAttribute("r") || "";
+      const index = colToIndex(ref);
+      const type = cell.getAttribute("t");
+      const valueNode = getFirstChildByLocalName(cell, "v");
+
+      let value = "";
+      if (type === "s" && valueNode) {
+        value = sharedStrings[Number(valueNode.textContent)] || "";
+      } else if (type === "inlineStr") {
+        const inlineNode = getFirstChildByLocalName(cell, "is");
+        value = inlineNode
+          ? getElementsByLocalName(inlineNode, "t")
+              .map((node) => node.textContent || "")
+              .join("")
+          : "";
+      } else if (valueNode) {
+        value = valueNode.textContent || "";
+      }
+
+      cells[index] = value;
+      maxIndex = Math.max(maxIndex, index);
+    });
+
+    return Array.from({ length: maxIndex + 1 }, (_, idx) => cells[idx] || "");
+  });
+
+  const headers = matrix[0] || [];
+  return matrix
+    .slice(1)
+    .filter((row) => row.some((cell) => String(cell).trim()))
+    .map((row) => {
+      const record = {};
+      headers.forEach((header, index) => {
+        record[header] = row[index] ?? "";
+      });
+      return record;
+    });
+};
+
+const loadWorkbookBuffer = async (buffer) => {
+  const files = await unzipXlsxBuffer(buffer);
+  const workbookXml = files.get("xl/workbook.xml");
+  if (!workbookXml) {
+    throw new Error("엑셀 워크북을 읽을 수 없습니다.");
+  }
+
+  const workbookDoc = xmlToDocument(workbookXml);
+  const sheetPaths = getWorkbookSheetPaths(files, workbookDoc);
+  const targetSheetName = sheetPaths.has("Master_60") ? "Master_60" : sheetPaths.has(TEMPLATE_SHEET_NAME) ? TEMPLATE_SHEET_NAME : null;
+
+  if (!targetSheetName) {
+    throw new Error("Master_60 시트 또는 웨딩홀_추가양식 시트를 찾을 수 없습니다.");
+  }
+
+  const sheetPath = sheetPaths.get(targetSheetName);
+  const sheetXml = files.get(sheetPath);
+  if (!sheetXml) {
+    throw new Error(`${targetSheetName} 시트 데이터를 읽을 수 없습니다.`);
+  }
+
+  const sharedStrings = parseSharedStrings(files);
+  const records = parseWorksheetRecords(xmlToDocument(sheetXml), sharedStrings);
+  return {
+    halls: normalizeRecords(records),
+    mode: targetSheetName === "Master_60" ? "replace" : "merge",
+    sheetName: targetSheetName,
+  };
+};
+
+const loadWorkbookFile = async (file) => loadWorkbookBuffer(await file.arrayBuffer());
+
+const useBuiltinData = (message = "기본 내장 데이터를 불러왔습니다.", type = "is-success") => {
+  halls = [...builtinHalls];
+  rebuildDistrictOptions();
+  dataSourceLabel.textContent = "기본 내장 데이터 사용 중";
+  setSourceStatus(message, type);
+  update();
+};
+
+const tryLoadDefaultWorkbook = async () => {
+  for (const fileName of DEFAULT_WORKBOOK_FILES) {
+    try {
+      const response = await fetch(encodeURI(fileName), { cache: "no-store" });
+      if (!response.ok) {
+        continue;
+      }
+
+      const workbookData = await loadWorkbookBuffer(await response.arrayBuffer());
+      if (!workbookData.halls.length) {
+        continue;
+      }
+
+      halls = workbookData.halls;
+      rebuildDistrictOptions();
+      dataSourceLabel.textContent = `${fileName} 자동 반영 중`;
+      setSourceStatus(`페이지를 열면서 '${fileName}'의 Master_60 시트를 읽어 ${workbookData.halls.length}개 홀을 자동 반영했습니다.`, "is-success");
+      update();
+      return true;
+    } catch (error) {
+      continue;
+    }
+  }
+
+  return false;
+};
+
+const handleExcelUpload = async (event) => {
+  const [file] = event.target.files || [];
+  if (!file) {
+    return;
+  }
+
+  setSourceStatus("엑셀을 읽는 중입니다...", "");
+
+  try {
+    const workbookData = await loadWorkbookFile(file);
+    if (!workbookData.halls.length) {
+      throw new Error("업로드한 파일에서 웨딩홀 데이터를 찾지 못했습니다.");
+    }
+
+    if (workbookData.mode === "merge") {
+      const mergedResult = mergeHallDatasets(halls, workbookData.halls);
+      halls = mergedResult.halls;
+      rebuildDistrictOptions();
+      dataSourceLabel.textContent = `기존 데이터 + ${file.name} 양식 반영`;
+      setSourceStatus(
+        `'${file.name}' 양식을 반영했습니다. 신규 ${mergedResult.addedCount}개, 업데이트 ${mergedResult.updatedCount}개, 현재 총 ${mergedResult.halls.length}개 홀입니다.`,
+        "is-success"
+      );
+      update();
+      return;
+    }
+
+    halls = workbookData.halls;
+    rebuildDistrictOptions();
+    dataSourceLabel.textContent = `${file.name} 업로드 데이터 사용 중`;
+    setSourceStatus(`'${file.name}'의 Master_60 시트를 불러왔습니다. 총 ${workbookData.halls.length}개 홀을 반영했습니다.`, "is-success");
+    update();
+  } catch (error) {
+    setSourceStatus(error instanceof Error ? error.message : "엑셀 업로드 중 오류가 발생했습니다.", "is-error");
+  } finally {
+    event.target.value = "";
+  }
+};
+
+const handleBuiltinReload = async () => {
+  setSourceStatus("기본 데이터를 다시 불러오는 중입니다...", "");
+  const loaded = await tryLoadDefaultWorkbook();
+  if (!loaded) {
+    useBuiltinData("엑셀 자동 반영이 어려워 기본 내장 데이터로 불러왔습니다.", "is-success");
+  }
+};
+
+const handleFavoriteButtonClick = (event) => {
+  const favoriteButton = event.target.closest("[data-favorite-key]");
+  if (!favoriteButton) {
+    return;
+  }
+
+  event.preventDefault();
+  toggleFavoriteHallByKey(favoriteButton.dataset.favoriteKey);
+};
+
+const handleMemoInput = (event) => {
+  const memoField = event.target.closest("[data-memo-key]");
+  if (!memoField) {
+    return;
+  }
+
+  updateUserMemoByKey(memoField.dataset.memoKey, memoField.value);
+
+  document.querySelectorAll("[data-memo-key]").forEach((field) => {
+    if (field !== memoField && field.dataset.memoKey === memoField.dataset.memoKey) {
+      field.value = memoField.value;
+    }
+  });
+};
+
+[mealPriceInput, guestCountInput, rentPriceInput, districtSelect, sortSelect].forEach((element) => {
+  element.addEventListener("input", update);
+  element.addEventListener("change", update);
+});
+
+resetButton.addEventListener("click", resetFilters);
+excelUpload.addEventListener("change", handleExcelUpload);
+reloadBuiltinButton.addEventListener("click", handleBuiltinReload);
+updateRefreshButton?.addEventListener("click", applyPendingUpdate);
+updateDismissButton?.addEventListener("click", hideUpdateBanner);
+exportShareButton?.addEventListener("click", exportSharedData);
+importShareInput?.addEventListener("change", async (event) => {
+  const [file] = event.target.files || [];
+  await importSharedData(file);
+  event.target.value = "";
+});
+cardList?.addEventListener("click", handleFavoriteButtonClick);
+resultTableBody?.addEventListener("click", handleFavoriteButtonClick);
+favoriteList?.addEventListener("click", handleFavoriteButtonClick);
+cardList?.addEventListener("input", handleMemoInput);
+favoriteList?.addEventListener("input", handleMemoInput);
+clearFavoritesButton?.addEventListener("click", clearAllFavorites);
+
+window.addEventListener("weddingpick:update-ready", (event) => {
+  const registration = event.detail?.registration ?? null;
+  showUpdateBanner("새 버전이 준비됐어요. 최신 화면과 데이터를 보려면 새로고침하세요.", registration);
+});
+
+rebuildDistrictOptions();
+update();
+
+handleBuiltinReload();
