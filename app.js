@@ -39,7 +39,7 @@ const resultTableBody = document.querySelector("#resultTableBody");
 
 const FAVORITES_STORAGE_KEY = "weddingpick-favorites";
 const MEMOS_STORAGE_KEY = "weddingpick-user-memos";
-const SHARE_FILE_VERSION = 3;
+const SHARE_FILE_VERSION = 4;
 const SHARE_HASH_KEY = "share";
 
 let pendingUpdateRegistration = null;
@@ -157,6 +157,35 @@ const buildHallKey = (hall) =>
     .join("::");
 
 const getFavoriteKey = (hall) => String(hall?.favoriteKey || buildHallKey(hall)).trim();
+
+const getHallIdToken = (value) => {
+  const parsedValue = typeof value === "number" ? value : Number(String(value ?? "").trim());
+  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
+    return "";
+  }
+  return parsedValue.toString(36);
+};
+
+const buildShareTokenLookup = () => {
+  const lookup = new Map();
+  [...halls, ...builtinHalls].forEach((hall) => {
+    const token = getHallIdToken(hall.id);
+    if (token) {
+      lookup.set(token, hall);
+    }
+  });
+  return lookup;
+};
+
+const getShareTokenFromFavoriteKey = (favoriteKey) => {
+  const normalizedKey = String(favoriteKey || "").trim();
+  if (!normalizedKey) {
+    return "";
+  }
+
+  const builtinHall = builtinHalls.find((hall) => buildHallKey(hall) === normalizedKey);
+  return getHallIdToken(builtinHall?.id) || normalizedKey;
+};
 
 const getPreferredSnapshotValue = (snapshotValue, liveValue) => {
   if (typeof snapshotValue === "string") {
@@ -453,15 +482,22 @@ const clearAllFavorites = () => {
 
 const getFavoriteHalls = () => [...favoriteEntries];
 
-const getShareFavoriteKeys = () =>
-  [...new Set(favoriteEntries.map((entry) => String(entry.favoriteKey || "").trim()).filter(Boolean))];
+const getShareFavoriteTokens = () =>
+  [...new Set(favoriteEntries.map((entry) => getShareTokenFromFavoriteKey(entry.favoriteKey)).filter(Boolean))];
+
+const getShareMemoMap = () =>
+  Object.entries(normalizeMemoMap(memoByHallKey)).reduce((accumulator, [hallKey, memo]) => {
+    const token = getShareTokenFromFavoriteKey(hallKey);
+    if (token && memo.trim()) {
+      accumulator[token] = memo;
+    }
+    return accumulator;
+  }, {});
 
 const buildSharePayload = () => ({
-  version: SHARE_FILE_VERSION,
-  exportedAt: new Date().toISOString(),
-  app: "weddingpick",
-  favorites: getShareFavoriteKeys(),
-  memos: normalizeMemoMap(memoByHallKey),
+  v: SHARE_FILE_VERSION,
+  f: getShareFavoriteTokens(),
+  m: getShareMemoMap(),
 });
 
 const createShareUrl = (encodedPayload) => {
@@ -486,8 +522,6 @@ const base64UrlToBytes = (value) => {
 
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 };
-
-const encodeRawSharePayload = (payloadText) => `raw.${bytesToBase64Url(textEncoder.encode(payloadText))}`;
 
 const prepareShareUrl = () => {
   if (!favoriteEntries.length && !Object.keys(memoByHallKey).length) {
@@ -534,20 +568,69 @@ const encodeSharePayload = async (payloadText) => {
   return `raw.${bytesToBase64Url(payloadBytes)}`;
 };
 
+const normalizeImportedMemoMap = (rawMemoMap, shareTokenLookup) => {
+  if (!rawMemoMap || typeof rawMemoMap !== "object" || Array.isArray(rawMemoMap)) {
+    return {};
+  }
+
+  return Object.entries(rawMemoMap).reduce((accumulator, [reference, memo]) => {
+    const normalizedMemo = typeof memo === "string" ? memo : "";
+    if (!normalizedMemo.trim()) {
+      return accumulator;
+    }
+
+    const hallFromToken = shareTokenLookup.get(String(reference || "").trim());
+    const memoKey = hallFromToken ? buildHallKey(hallFromToken) : String(reference || "").trim();
+
+    if (memoKey) {
+      accumulator[memoKey] = normalizedMemo;
+    }
+    return accumulator;
+  }, {});
+};
+
+const normalizeImportedFavoriteReferences = (references, hallLookup, shareTokenLookup) => {
+  const normalizedReferences = Array.isArray(references) ? references : [];
+
+  return normalizeFavoriteEntries(
+    normalizedReferences.map((reference) => {
+      if (typeof reference !== "string") {
+        return reference;
+      }
+
+      const normalizedReference = reference.trim();
+      const hallFromToken = shareTokenLookup.get(normalizedReference);
+      if (hallFromToken) {
+        return getHallSnapshot(hallFromToken);
+      }
+
+      if (hallLookup.get(normalizedReference)) {
+        return normalizedReference;
+      }
+
+      return null;
+    }),
+    hallLookup
+  ).entries;
+};
+
 const importSharedPayload = (payload, sourceLabel = "공유 링크") => {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     throw new Error("공유 데이터 형식이 올바르지 않습니다.");
   }
 
   const hallLookup = buildFavoriteLookup();
+  const shareTokenLookup = buildShareTokenLookup();
   const importedFavoritesRaw = Array.isArray(payload.favorites)
     ? payload.favorites
+    : Array.isArray(payload.f)
+      ? payload.f
     : Array.isArray(payload.favoriteEntries)
       ? payload.favoriteEntries
       : [];
-  const importedMemosRaw = payload.memos ?? payload.memoByHallKey ?? {};
-  const normalizedFavorites = normalizeFavoriteEntries(importedFavoritesRaw, hallLookup).entries;
-  const normalizedMemos = normalizeMemoMap(importedMemosRaw);
+  const importedMemosRaw = payload.memos ?? payload.memoByHallKey ?? payload.m ?? {};
+  const normalizedFavorites = normalizeImportedFavoriteReferences(importedFavoritesRaw, hallLookup, shareTokenLookup);
+  const normalizedMemos = normalizeImportedMemoMap(importedMemosRaw, shareTokenLookup);
 
   if (!normalizedFavorites.length && !Object.keys(normalizedMemos).length) {
     throw new Error("공유 데이터 안에 불러올 즐겨찾기나 메모가 없습니다.");
@@ -647,14 +730,10 @@ const copyShareLink = async () => {
 
   try {
     const payloadText = JSON.stringify(buildSharePayload());
-    let shareUrl =
+    const shareUrl =
       preparedSharePayloadKey === payloadText && preparedShareUrl
         ? preparedShareUrl
-        : createShareUrl(encodeRawSharePayload(payloadText));
-
-    if (shareUrl.length > 7000) {
-      shareUrl = await buildShareUrl();
-    }
+        : await buildShareUrl();
 
     if (shareUrl.length > 7000) {
       throw new Error("공유 내용이 많아 링크가 너무 깁니다. 메모를 조금 줄인 뒤 다시 시도해주세요.");
