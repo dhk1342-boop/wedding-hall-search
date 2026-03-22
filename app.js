@@ -45,6 +45,8 @@ let pendingUpdateRegistration = null;
 let favoriteEntries = [];
 let shouldPersistMigratedFavorites = false;
 let memoByHallKey = {};
+let preparedSharePayloadKey = "";
+let preparedShareUrl = "";
 
 const numberFormatter = new Intl.NumberFormat("ko-KR");
 const textEncoder = new TextEncoder();
@@ -215,6 +217,7 @@ const updateUserMemoByKey = (hallKey, memo) => {
 
   memoByHallKey = nextMemoMap;
   saveUserMemos();
+  prepareShareUrl();
 };
 
 const getHallSnapshot = (hall) => ({
@@ -408,6 +411,7 @@ const toggleFavoriteHall = (hall) => {
   }
 
   saveFavoriteEntries();
+  prepareShareUrl();
   update();
 };
 
@@ -420,6 +424,7 @@ const toggleFavoriteHallByKey = (hallKey) => {
   if (existingFavorite) {
     favoriteEntries = favoriteEntries.filter((entry) => entry.favoriteKey !== hallKey);
     saveFavoriteEntries();
+    prepareShareUrl();
     update();
     return;
   }
@@ -431,12 +436,14 @@ const toggleFavoriteHallByKey = (hallKey) => {
 
   favoriteEntries = [getHallSnapshot(matchedHall), ...favoriteEntries];
   saveFavoriteEntries();
+  prepareShareUrl();
   update();
 };
 
 const clearAllFavorites = () => {
   favoriteEntries = [];
   saveFavoriteEntries();
+  prepareShareUrl();
   update();
 };
 
@@ -449,6 +456,12 @@ const buildSharePayload = () => ({
   favorites: favoriteEntries,
   memos: memoByHallKey,
 });
+
+const createShareUrl = (encodedPayload) => {
+  const shareUrl = new URL(window.location.href);
+  shareUrl.hash = `${SHARE_HASH_KEY}=${encodedPayload}`;
+  return shareUrl.toString();
+};
 
 const bytesToBase64Url = (bytes) => {
   let binary = "";
@@ -465,6 +478,31 @@ const base64UrlToBytes = (value) => {
   const binary = atob(padded);
 
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+};
+
+const encodeRawSharePayload = (payloadText) => `raw.${bytesToBase64Url(textEncoder.encode(payloadText))}`;
+
+const prepareShareUrl = () => {
+  if (!favoriteEntries.length && !Object.keys(memoByHallKey).length) {
+    preparedSharePayloadKey = "";
+    preparedShareUrl = "";
+    return;
+  }
+
+  const payloadText = JSON.stringify(buildSharePayload());
+  preparedSharePayloadKey = payloadText;
+
+  encodeSharePayload(payloadText)
+    .then((encodedPayload) => {
+      if (preparedSharePayloadKey === payloadText) {
+        preparedShareUrl = createShareUrl(encodedPayload);
+      }
+    })
+    .catch(() => {
+      if (preparedSharePayloadKey === payloadText) {
+        preparedShareUrl = "";
+      }
+    });
 };
 
 const mergeImportedFavoriteEntries = (importedEntries) => {
@@ -516,6 +554,7 @@ const importSharedPayload = (payload, sourceLabel = "공유 링크") => {
 
   saveFavoriteEntries();
   saveUserMemos();
+  prepareShareUrl();
   update();
 
   setSourceStatus(
@@ -553,27 +592,44 @@ const decodeSharePayload = async (encodedPayload) => {
 const buildShareUrl = async () => {
   const payloadText = JSON.stringify(buildSharePayload());
   const encodedPayload = await encodeSharePayload(payloadText);
-  const shareUrl = new URL(window.location.href);
-
-  shareUrl.hash = `${SHARE_HASH_KEY}=${encodedPayload}`;
-  return shareUrl.toString();
+  return createShareUrl(encodedPayload);
 };
 
 const copyText = async (text) => {
   if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (error) {
+      // Fall back to manual copy below.
+    }
   }
 
   const textarea = document.createElement("textarea");
   textarea.value = text;
   textarea.setAttribute("readonly", "");
   textarea.style.position = "fixed";
-  textarea.style.top = "-9999px";
+  textarea.style.top = "0";
+  textarea.style.left = "-9999px";
+  textarea.style.opacity = "0";
   document.body.append(textarea);
+  textarea.focus();
   textarea.select();
-  document.execCommand("copy");
+  textarea.setSelectionRange(0, text.length);
+
+  let copied = false;
+  try {
+    copied = typeof document.execCommand === "function" ? document.execCommand("copy") : false;
+  } catch (error) {
+    copied = false;
+  }
+
   textarea.remove();
+  return copied;
+};
+
+const showManualCopyPrompt = (text) => {
+  window.prompt("자동 복사가 제한되어 있어요. 아래 링크를 직접 복사해주세요.", text);
 };
 
 const copyShareLink = async () => {
@@ -583,17 +639,34 @@ const copyShareLink = async () => {
   }
 
   try {
-    const shareUrl = await buildShareUrl();
+    const payloadText = JSON.stringify(buildSharePayload());
+    let shareUrl =
+      preparedSharePayloadKey === payloadText && preparedShareUrl
+        ? preparedShareUrl
+        : createShareUrl(encodeRawSharePayload(payloadText));
+
+    if (shareUrl.length > 7000) {
+      shareUrl = await buildShareUrl();
+    }
 
     if (shareUrl.length > 7000) {
       throw new Error("공유 내용이 많아 링크가 너무 깁니다. 메모를 조금 줄인 뒤 다시 시도해주세요.");
     }
 
-    await copyText(shareUrl);
+    const copied = await copyText(shareUrl);
+
+    if (!copied) {
+      showManualCopyPrompt(shareUrl);
+      setSourceStatus("자동 복사가 막혀 링크를 직접 복사할 수 있게 열어드렸습니다.", "is-success");
+      prepareShareUrl();
+      return;
+    }
+
     setSourceStatus(
       `공유 링크를 복사했습니다. 즐겨찾기 ${favoriteEntries.length}개와 메모 ${Object.keys(memoByHallKey).length}건이 포함됐습니다.`,
       "is-success"
     );
+    prepareShareUrl();
   } catch (error) {
     setSourceStatus(error instanceof Error ? error.message : "공유 링크를 만드는 중 오류가 발생했습니다.", "is-error");
   }
@@ -889,6 +962,7 @@ if (shouldPersistMigratedFavorites && favoriteEntries.length) {
   saveFavoriteEntries();
 }
 memoByHallKey = loadUserMemos();
+prepareShareUrl();
 
 const renderFavorites = (items, guestCount) => {
   const storedFavoriteCount = favoriteEntries.length;
