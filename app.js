@@ -19,6 +19,7 @@ const updateRefreshButton = document.querySelector("#updateRefreshButton");
 const updateDismissButton = document.querySelector("#updateDismissButton");
 const favoriteSummary = document.querySelector("#favoriteSummary");
 const favoriteCountBadge = document.querySelector("#favoriteCountBadge");
+const copyShareLinkButton = document.querySelector("#copyShareLinkButton");
 const clearFavoritesButton = document.querySelector("#clearFavoritesButton");
 const favoriteList = document.querySelector("#favoriteList");
 
@@ -37,6 +38,8 @@ const resultTableBody = document.querySelector("#resultTableBody");
 
 const FAVORITES_STORAGE_KEY = "weddingpick-favorites";
 const MEMOS_STORAGE_KEY = "weddingpick-user-memos";
+const SHARE_FILE_VERSION = 2;
+const SHARE_HASH_KEY = "share";
 
 let pendingUpdateRegistration = null;
 let favoriteEntries = [];
@@ -44,6 +47,7 @@ let shouldPersistMigratedFavorites = false;
 let memoByHallKey = {};
 
 const numberFormatter = new Intl.NumberFormat("ko-KR");
+const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder("utf-8");
 
 const formatMoney = (value) => (typeof value === "number" && Number.isFinite(value) ? `${numberFormatter.format(value)}원` : "-");
@@ -166,19 +170,7 @@ const loadUserMemos = () => {
   }
 
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(MEMOS_STORAGE_KEY) || "{}");
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
-    }
-
-    return Object.entries(parsed).reduce((accumulator, [hallKey, memo]) => {
-      const normalizedKey = String(hallKey || "").trim();
-      const normalizedMemo = typeof memo === "string" ? memo : "";
-      if (normalizedKey && normalizedMemo.trim()) {
-        accumulator[normalizedKey] = normalizedMemo;
-      }
-      return accumulator;
-    }, {});
+    return normalizeMemoMap(JSON.parse(window.localStorage.getItem(MEMOS_STORAGE_KEY) || "{}"));
   } catch (error) {
     return {};
   }
@@ -258,6 +250,21 @@ const getHallSnapshot = (hall) => ({
   budgetBand: hall.budgetBand ?? "",
 });
 
+const normalizeMemoMap = (rawMemoMap) => {
+  if (!rawMemoMap || typeof rawMemoMap !== "object" || Array.isArray(rawMemoMap)) {
+    return {};
+  }
+
+  return Object.entries(rawMemoMap).reduce((accumulator, [hallKey, memo]) => {
+    const normalizedKey = String(hallKey || "").trim();
+    const normalizedMemo = typeof memo === "string" ? memo : "";
+    if (normalizedKey && normalizedMemo.trim()) {
+      accumulator[normalizedKey] = normalizedMemo;
+    }
+    return accumulator;
+  }, {});
+};
+
 const hydrateFavoriteSnapshot = (snapshot, hallLookup) => {
   const liveHall = hallLookup.get(snapshot.favoriteKey);
   if (!liveHall) {
@@ -308,6 +315,55 @@ const hydrateFavoriteSnapshot = (snapshot, hallLookup) => {
   return { snapshot: mergedSnapshot, changed };
 };
 
+const normalizeFavoriteEntries = (items, hallLookup) => {
+  if (!Array.isArray(items)) {
+    return { entries: [], changed: false };
+  }
+
+  const uniqueEntries = [];
+  let changed = false;
+
+  items.forEach((item) => {
+    let snapshot = null;
+
+    if (typeof item === "string") {
+      const matchedHall = hallLookup.get(item);
+      if (matchedHall) {
+        snapshot = getHallSnapshot(matchedHall);
+        changed = true;
+      }
+    } else if (item && typeof item === "object") {
+      const sourceHall = item.hall && typeof item.hall === "object" ? item.hall : item;
+      const favoriteKey = String(item.key || sourceHall.favoriteKey || buildHallKey(sourceHall)).trim();
+      if (favoriteKey) {
+        snapshot = {
+          ...getHallSnapshot(sourceHall),
+          favoriteKey,
+        };
+      }
+    }
+
+    if (!snapshot || !snapshot.favoriteKey) {
+      return;
+    }
+
+    const hydratedSnapshot = hydrateFavoriteSnapshot(snapshot, hallLookup);
+    snapshot = hydratedSnapshot.snapshot;
+    if (hydratedSnapshot.changed) {
+      changed = true;
+    }
+
+    const existingIndex = uniqueEntries.findIndex((entry) => entry.favoriteKey === snapshot.favoriteKey);
+    if (existingIndex === -1) {
+      uniqueEntries.push(snapshot);
+    } else {
+      uniqueEntries[existingIndex] = snapshot;
+    }
+  });
+
+  return { entries: uniqueEntries, changed };
+};
+
 const loadFavoriteEntries = () => {
   if (typeof window.localStorage === "undefined") {
     return [];
@@ -315,53 +371,11 @@ const loadFavoriteEntries = () => {
 
   try {
     shouldPersistMigratedFavorites = false;
-    const parsed = JSON.parse(window.localStorage.getItem(FAVORITES_STORAGE_KEY) || "[]");
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
     const hallLookup = buildFavoriteLookup();
-    const uniqueEntries = [];
-
-    parsed.forEach((item) => {
-      let snapshot = null;
-
-      if (typeof item === "string") {
-        const matchedHall = hallLookup.get(item);
-        if (matchedHall) {
-          snapshot = getHallSnapshot(matchedHall);
-          shouldPersistMigratedFavorites = true;
-        }
-      } else if (item && typeof item === "object") {
-        const sourceHall = item.hall && typeof item.hall === "object" ? item.hall : item;
-        const favoriteKey = String(item.key || sourceHall.favoriteKey || buildHallKey(sourceHall)).trim();
-        if (favoriteKey) {
-          snapshot = {
-            ...getHallSnapshot(sourceHall),
-            favoriteKey,
-          };
-        }
-      }
-
-      if (!snapshot || !snapshot.favoriteKey) {
-        return;
-      }
-
-      const hydratedSnapshot = hydrateFavoriteSnapshot(snapshot, hallLookup);
-      snapshot = hydratedSnapshot.snapshot;
-      if (hydratedSnapshot.changed) {
-        shouldPersistMigratedFavorites = true;
-      }
-
-      const existingIndex = uniqueEntries.findIndex((entry) => entry.favoriteKey === snapshot.favoriteKey);
-      if (existingIndex === -1) {
-        uniqueEntries.push(snapshot);
-      } else {
-        uniqueEntries[existingIndex] = snapshot;
-      }
-    });
-
-    return uniqueEntries;
+    const parsed = JSON.parse(window.localStorage.getItem(FAVORITES_STORAGE_KEY) || "[]");
+    const normalizedResult = normalizeFavoriteEntries(parsed, hallLookup);
+    shouldPersistMigratedFavorites = normalizedResult.changed;
+    return normalizedResult.entries;
   } catch (error) {
     return [];
   }
@@ -427,6 +441,199 @@ const clearAllFavorites = () => {
 };
 
 const getFavoriteHalls = () => [...favoriteEntries];
+
+const buildSharePayload = () => ({
+  version: SHARE_FILE_VERSION,
+  exportedAt: new Date().toISOString(),
+  app: "weddingpick",
+  favorites: favoriteEntries,
+  memos: memoByHallKey,
+});
+
+const bytesToBase64Url = (bytes) => {
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+};
+
+const base64UrlToBytes = (value) => {
+  const normalized = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - (normalized.length % 4 || 4)) % 4);
+  const binary = atob(padded);
+
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+};
+
+const mergeImportedFavoriteEntries = (importedEntries) => {
+  const mergedEntries = [...importedEntries];
+  favoriteEntries.forEach((entry) => {
+    if (!mergedEntries.some((importedEntry) => importedEntry.favoriteKey === entry.favoriteKey)) {
+      mergedEntries.push(entry);
+    }
+  });
+  return mergedEntries;
+};
+
+const encodeSharePayload = async (payloadText) => {
+  const payloadBytes = textEncoder.encode(payloadText);
+
+  if (typeof CompressionStream !== "undefined") {
+    const compressedStream = new Blob([payloadBytes]).stream().pipeThrough(new CompressionStream("gzip"));
+    const compressedBytes = new Uint8Array(await new Response(compressedStream).arrayBuffer());
+    return `gz.${bytesToBase64Url(compressedBytes)}`;
+  }
+
+  return `raw.${bytesToBase64Url(payloadBytes)}`;
+};
+
+const importSharedPayload = (payload, sourceLabel = "공유 링크") => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("공유 데이터 형식이 올바르지 않습니다.");
+  }
+
+  const hallLookup = buildFavoriteLookup();
+  const importedFavoritesRaw = Array.isArray(payload.favorites)
+    ? payload.favorites
+    : Array.isArray(payload.favoriteEntries)
+      ? payload.favoriteEntries
+      : [];
+  const importedMemosRaw = payload.memos ?? payload.memoByHallKey ?? {};
+  const normalizedFavorites = normalizeFavoriteEntries(importedFavoritesRaw, hallLookup).entries;
+  const normalizedMemos = normalizeMemoMap(importedMemosRaw);
+
+  if (!normalizedFavorites.length && !Object.keys(normalizedMemos).length) {
+    throw new Error("공유 데이터 안에 불러올 즐겨찾기나 메모가 없습니다.");
+  }
+
+  favoriteEntries = mergeImportedFavoriteEntries(normalizedFavorites);
+  memoByHallKey = {
+    ...memoByHallKey,
+    ...normalizedMemos,
+  };
+
+  saveFavoriteEntries();
+  saveUserMemos();
+  update();
+
+  setSourceStatus(
+    `${sourceLabel}를 불러왔습니다. 즐겨찾기 ${normalizedFavorites.length}개와 메모 ${Object.keys(normalizedMemos).length}건을 합쳤습니다.`,
+    "is-success"
+  );
+};
+
+const decodeSharePayload = async (encodedPayload) => {
+  const separatorIndex = String(encodedPayload || "").indexOf(".");
+  if (separatorIndex === -1) {
+    throw new Error("공유 링크 형식이 올바르지 않습니다.");
+  }
+
+  const mode = encodedPayload.slice(0, separatorIndex);
+  const data = encodedPayload.slice(separatorIndex + 1);
+  const payloadBytes = base64UrlToBytes(data);
+
+  if (mode === "gz") {
+    if (typeof DecompressionStream === "undefined") {
+      throw new Error("이 브라우저는 공유 링크 불러오기를 지원하지 않습니다.");
+    }
+
+    const decompressedStream = new Blob([payloadBytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return await new Response(decompressedStream).text();
+  }
+
+  if (mode === "raw") {
+    return textDecoder.decode(payloadBytes);
+  }
+
+  throw new Error("지원하지 않는 공유 링크 형식입니다.");
+};
+
+const buildShareUrl = async () => {
+  const payloadText = JSON.stringify(buildSharePayload());
+  const encodedPayload = await encodeSharePayload(payloadText);
+  const shareUrl = new URL(window.location.href);
+
+  shareUrl.hash = `${SHARE_HASH_KEY}=${encodedPayload}`;
+  return shareUrl.toString();
+};
+
+const copyText = async (text) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "-9999px";
+  document.body.append(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
+};
+
+const copyShareLink = async () => {
+  if (!favoriteEntries.length && !Object.keys(memoByHallKey).length) {
+    setSourceStatus("공유할 즐겨찾기나 메모가 아직 없습니다.", "is-error");
+    return;
+  }
+
+  try {
+    const shareUrl = await buildShareUrl();
+
+    if (shareUrl.length > 7000) {
+      throw new Error("공유 내용이 많아 링크가 너무 깁니다. 메모를 조금 줄인 뒤 다시 시도해주세요.");
+    }
+
+    await copyText(shareUrl);
+    setSourceStatus(
+      `공유 링크를 복사했습니다. 즐겨찾기 ${favoriteEntries.length}개와 메모 ${Object.keys(memoByHallKey).length}건이 포함됐습니다.`,
+      "is-success"
+    );
+  } catch (error) {
+    setSourceStatus(error instanceof Error ? error.message : "공유 링크를 만드는 중 오류가 발생했습니다.", "is-error");
+  }
+};
+
+const clearSharedHashFromUrl = () => {
+  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+  if (!hash) {
+    return;
+  }
+
+  const hashParams = new URLSearchParams(hash);
+  hashParams.delete(SHARE_HASH_KEY);
+
+  const nextHash = hashParams.toString();
+  const nextUrl = `${window.location.pathname}${window.location.search}${nextHash ? `#${nextHash}` : ""}`;
+  window.history.replaceState({}, document.title, nextUrl);
+};
+
+const applySharedLinkFromUrl = async () => {
+  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+  if (!hash) {
+    return;
+  }
+
+  const hashParams = new URLSearchParams(hash);
+  const encodedPayload = hashParams.get(SHARE_HASH_KEY);
+  if (!encodedPayload) {
+    return;
+  }
+
+  try {
+    const payloadText = await decodeSharePayload(encodedPayload);
+    const payload = JSON.parse(payloadText);
+    importSharedPayload(payload, "공유 링크");
+    clearSharedHashFromUrl();
+  } catch (error) {
+    setSourceStatus(error instanceof Error ? error.message : "공유 링크를 불러오는 중 오류가 발생했습니다.", "is-error");
+  }
+};
 
 const getHallSourceNote = (hall) => String(hall.tags || hall.memo || "").trim();
 
@@ -1263,12 +1470,16 @@ excelUpload.addEventListener("change", handleExcelUpload);
 reloadBuiltinButton.addEventListener("click", handleBuiltinReload);
 updateRefreshButton?.addEventListener("click", applyPendingUpdate);
 updateDismissButton?.addEventListener("click", hideUpdateBanner);
+copyShareLinkButton?.addEventListener("click", copyShareLink);
 cardList?.addEventListener("click", handleFavoriteButtonClick);
 resultTableBody?.addEventListener("click", handleFavoriteButtonClick);
 favoriteList?.addEventListener("click", handleFavoriteButtonClick);
 cardList?.addEventListener("input", handleMemoInput);
 favoriteList?.addEventListener("input", handleMemoInput);
 clearFavoritesButton?.addEventListener("click", clearAllFavorites);
+window.addEventListener("hashchange", () => {
+  applySharedLinkFromUrl();
+});
 
 window.addEventListener("weddingpick:update-ready", (event) => {
   const registration = event.detail?.registration ?? null;
@@ -1279,3 +1490,4 @@ rebuildDistrictOptions();
 update();
 
 handleBuiltinReload();
+applySharedLinkFromUrl();
