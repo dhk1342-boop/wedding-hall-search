@@ -1,9 +1,10 @@
-const CACHE_NAME = "wedding-hall-search-v20260322app23";
+const CACHE_NAME = "wedding-hall-search-v20260411app25";
 const APP_SHELL_FILES = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./firebase-config.js",
   "./data.js",
   "./manifest.webmanifest",
   "./register-pwa.js",
