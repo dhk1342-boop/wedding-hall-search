@@ -21,6 +21,7 @@ const updateDismissButton = document.querySelector("#updateDismissButton");
 const favoriteSummary = document.querySelector("#favoriteSummary");
 const favoriteCountBadge = document.querySelector("#favoriteCountBadge");
 const copyShareLinkButton = document.querySelector("#copyShareLinkButton");
+const restoreLocalDataButton = document.querySelector("#restoreLocalDataButton");
 const clearFavoritesButton = document.querySelector("#clearFavoritesButton");
 const favoriteList = document.querySelector("#favoriteList");
 
@@ -39,8 +40,12 @@ const resultTableBody = document.querySelector("#resultTableBody");
 
 const FAVORITES_STORAGE_KEY = "weddingpick-favorites";
 const MEMOS_STORAGE_KEY = "weddingpick-user-memos";
+const SHARE_SESSION_STORAGE_KEY = "weddingpick-share-session";
 const SHARE_FILE_VERSION = 4;
 const SHARE_HASH_KEY = "share";
+const ROOM_QUERY_KEY = "room";
+const ROOM_STORAGE_PATH = "rooms";
+const ROOM_SYNC_DEBOUNCE_MS = 600;
 
 let pendingUpdateRegistration = null;
 let favoriteEntries = [];
@@ -48,6 +53,13 @@ let shouldPersistMigratedFavorites = false;
 let memoByHallKey = {};
 let preparedSharePayloadKey = "";
 let preparedShareUrl = "";
+let activeShareSessionLabel = "";
+let activeRoomId = "";
+let activeRoomRef = null;
+let activeRoomValueListener = null;
+let latestRoomSnapshotValue = null;
+let pendingRoomSyncTimeoutId = 0;
+let sharedRoomInitialLoadComplete = false;
 
 const numberFormatter = new Intl.NumberFormat("ko-KR");
 const textEncoder = new TextEncoder();
@@ -187,6 +199,54 @@ const getShareTokenFromFavoriteKey = (favoriteKey) => {
   return getHallIdToken(builtinHall?.id) || normalizedKey;
 };
 
+const getCurrentUrl = () => new URL(window.location.href);
+const getRoomIdFromUrl = () => getCurrentUrl().searchParams.get(ROOM_QUERY_KEY)?.trim() || "";
+const isSharedRoomMode = () => Boolean(activeRoomId);
+const getSharedRoomLabel = (roomId = activeRoomId) => (roomId ? `공유 room ${roomId.slice(0, 8)}` : "공유 room");
+const getFirebaseDatabase = () => window.WEDDINGPICK_FIREBASE_DB || null;
+const canUseSharedRooms = () => Boolean(getFirebaseDatabase());
+
+const getSharedRoomRef = (roomId = activeRoomId) => {
+  const database = getFirebaseDatabase();
+  if (!database || !roomId) {
+    return null;
+  }
+
+  return database.ref(`${ROOM_STORAGE_PATH}/${roomId}`);
+};
+
+const updateRoomUrl = (roomId) => {
+  const nextUrl = getCurrentUrl();
+  if (roomId) {
+    nextUrl.searchParams.set(ROOM_QUERY_KEY, roomId);
+  } else {
+    nextUrl.searchParams.delete(ROOM_QUERY_KEY);
+  }
+  nextUrl.hash = "";
+  window.history.replaceState({}, document.title, nextUrl.toString());
+};
+
+const getSharedRoomUrl = (roomId = activeRoomId) => {
+  const shareUrl = getCurrentUrl();
+  if (roomId) {
+    shareUrl.searchParams.set(ROOM_QUERY_KEY, roomId);
+  }
+  shareUrl.hash = "";
+  return shareUrl.toString();
+};
+
+const generateRoomId = () => {
+  const alphabet = "23456789abcdefghjkmnpqrstuvwxyz";
+
+  if (window.crypto?.getRandomValues) {
+    const bytes = new Uint8Array(10);
+    window.crypto.getRandomValues(bytes);
+    return Array.from(bytes, (value) => alphabet[value % alphabet.length]).join("");
+  }
+
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+};
+
 const getPreferredSnapshotValue = (snapshotValue, liveValue) => {
   if (typeof snapshotValue === "string") {
     return snapshotValue.trim() ? snapshotValue : liveValue;
@@ -200,6 +260,10 @@ const getPreferredSnapshotValue = (snapshotValue, liveValue) => {
 };
 
 const loadUserMemos = () => {
+  if (isSharedRoomMode()) {
+    return memoByHallKey;
+  }
+
   if (typeof window.localStorage === "undefined") {
     return {};
   }
@@ -212,6 +276,16 @@ const loadUserMemos = () => {
 };
 
 const saveUserMemos = () => {
+  if (isSharedRoomMode()) {
+    scheduleSharedRoomSync();
+    return;
+  }
+
+  if (activeShareSessionLabel) {
+    saveShareSession();
+    return;
+  }
+
   if (typeof window.localStorage === "undefined") {
     return;
   }
@@ -401,6 +475,10 @@ const normalizeFavoriteEntries = (items, hallLookup) => {
 };
 
 const loadFavoriteEntries = () => {
+  if (isSharedRoomMode()) {
+    return favoriteEntries;
+  }
+
   if (typeof window.localStorage === "undefined") {
     return [];
   }
@@ -418,6 +496,16 @@ const loadFavoriteEntries = () => {
 };
 
 const saveFavoriteEntries = () => {
+  if (isSharedRoomMode()) {
+    scheduleSharedRoomSync();
+    return;
+  }
+
+  if (activeShareSessionLabel) {
+    saveShareSession();
+    return;
+  }
+
   if (typeof window.localStorage === "undefined") {
     return;
   }
@@ -500,6 +588,43 @@ const buildSharePayload = () => ({
   m: getShareMemoMap(),
 });
 
+const getSharedRoomFavoriteTokens = (roomPayload) => {
+  if (Array.isArray(roomPayload?.favorites)) {
+    return roomPayload.favorites.map((value) => String(value || "").trim()).filter(Boolean);
+  }
+
+  if (roomPayload?.favorites && typeof roomPayload.favorites === "object") {
+    return Object.entries(roomPayload.favorites)
+      .filter(([, enabled]) => Boolean(enabled))
+      .map(([token]) => String(token || "").trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
+const buildSharedRoomPayload = () => ({
+  version: 1,
+  app: "weddingpick",
+  favorites: getShareFavoriteTokens().reduce((accumulator, token) => {
+    accumulator[token] = true;
+    return accumulator;
+  }, {}),
+  memos: getShareMemoMap(),
+  updatedAt: window.firebase?.database?.ServerValue?.TIMESTAMP ?? Date.now(),
+});
+
+const normalizeSharedRoomPayload = (roomPayload) => {
+  const hallLookup = buildFavoriteLookup();
+  const shareTokenLookup = buildShareTokenLookup();
+  const favoriteReferences = getSharedRoomFavoriteTokens(roomPayload);
+
+  return {
+    favorites: normalizeImportedFavoriteReferences(favoriteReferences, hallLookup, shareTokenLookup),
+    memos: normalizeImportedMemoMap(roomPayload?.memos, shareTokenLookup),
+  };
+};
+
 const createShareUrl = (encodedPayload) => {
   const shareUrl = new URL(window.location.href);
   shareUrl.hash = `${SHARE_HASH_KEY}=${encodedPayload}`;
@@ -524,6 +649,12 @@ const base64UrlToBytes = (value) => {
 };
 
 const prepareShareUrl = () => {
+  if (isSharedRoomMode()) {
+    preparedSharePayloadKey = activeRoomId;
+    preparedShareUrl = getSharedRoomUrl();
+    return;
+  }
+
   if (!favoriteEntries.length && !Object.keys(memoByHallKey).length) {
     preparedSharePayloadKey = "";
     preparedShareUrl = "";
@@ -544,6 +675,186 @@ const prepareShareUrl = () => {
         preparedShareUrl = "";
       }
     });
+};
+
+const stopSharedRoomSubscription = () => {
+  if (pendingRoomSyncTimeoutId) {
+    window.clearTimeout(pendingRoomSyncTimeoutId);
+    pendingRoomSyncTimeoutId = 0;
+  }
+
+  if (activeRoomRef && activeRoomValueListener) {
+    activeRoomRef.off("value", activeRoomValueListener);
+  }
+
+  activeRoomRef = null;
+  activeRoomValueListener = null;
+  latestRoomSnapshotValue = null;
+  sharedRoomInitialLoadComplete = false;
+};
+
+const applySharedRoomState = (roomPayload) => {
+  latestRoomSnapshotValue = roomPayload;
+
+  const normalizedPayload = normalizeSharedRoomPayload(roomPayload || {});
+  activeShareSessionLabel = "";
+  favoriteEntries = normalizedPayload.favorites;
+  memoByHallKey = normalizedPayload.memos;
+  prepareShareUrl();
+  update();
+};
+
+const refreshSharedRoomStateAfterHallRefresh = () => {
+  if (!isSharedRoomMode()) {
+    return;
+  }
+
+  applySharedRoomState(latestRoomSnapshotValue || {});
+};
+
+const syncSharedRoomNow = async () => {
+  if (!isSharedRoomMode() || !activeRoomRef) {
+    return;
+  }
+
+  if (pendingRoomSyncTimeoutId) {
+    window.clearTimeout(pendingRoomSyncTimeoutId);
+    pendingRoomSyncTimeoutId = 0;
+  }
+
+  try {
+    await activeRoomRef.set(buildSharedRoomPayload());
+  } catch (error) {
+    setSourceStatus("공유 room 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "is-error");
+  }
+};
+
+const scheduleSharedRoomSync = () => {
+  if (!isSharedRoomMode() || !activeRoomRef) {
+    return;
+  }
+
+  if (pendingRoomSyncTimeoutId) {
+    window.clearTimeout(pendingRoomSyncTimeoutId);
+  }
+
+  pendingRoomSyncTimeoutId = window.setTimeout(() => {
+    syncSharedRoomNow();
+  }, ROOM_SYNC_DEBOUNCE_MS);
+};
+
+const activateSharedRoom = (roomId, options = {}) => {
+  const { updateHistory = true } = options;
+  if (!roomId) {
+    return;
+  }
+
+  const roomRef = getSharedRoomRef(roomId);
+  if (!roomRef) {
+    setSourceStatus("Firebase 연결이 아직 준비되지 않아 공유 room을 열 수 없습니다.", "is-error");
+    return;
+  }
+
+  stopSharedRoomSubscription();
+  clearShareSession();
+  activeRoomId = roomId;
+
+  if (updateHistory) {
+    updateRoomUrl(roomId);
+  }
+
+  activeRoomRef = roomRef;
+  activeRoomValueListener = (snapshot) => {
+    applySharedRoomState(snapshot.val());
+
+    if (!sharedRoomInitialLoadComplete) {
+      sharedRoomInitialLoadComplete = true;
+      const hasContent = Boolean(snapshot.val()) && (favoriteEntries.length > 0 || Object.keys(memoByHallKey).length > 0);
+      setSourceStatus(
+        hasContent
+          ? `${getSharedRoomLabel()}에 연결했습니다. 이 링크를 연 사람과 같은 즐겨찾기와 메모를 함께 보고 있습니다.`
+          : `${getSharedRoomLabel()}이 비어 있습니다. 첫 즐겨찾기나 메모부터 함께 채워보세요.`,
+        "is-success"
+      );
+    }
+  };
+
+  roomRef.on("value", activeRoomValueListener, () => {
+    setSourceStatus("공유 room을 불러오는 중 문제가 발생했습니다. 새로고침 후 다시 시도해주세요.", "is-error");
+  });
+};
+
+const createSharedRoomFromCurrentState = async () => {
+  if (!canUseSharedRooms()) {
+    throw new Error("공유 room을 만들 수 있도록 Firebase 연결이 필요합니다.");
+  }
+
+  const nextRoomId = generateRoomId();
+  const nextRoomRef = getSharedRoomRef(nextRoomId);
+  if (!nextRoomRef) {
+    throw new Error("공유 room 저장소에 연결하지 못했습니다.");
+  }
+
+  await nextRoomRef.set(buildSharedRoomPayload());
+  activateSharedRoom(nextRoomId);
+  return nextRoomId;
+};
+
+const saveShareSession = () => {
+  if (!activeShareSessionLabel || typeof window.sessionStorage === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(
+      SHARE_SESSION_STORAGE_KEY,
+      JSON.stringify({
+        sourceLabel: activeShareSessionLabel,
+        favorites: favoriteEntries,
+        memos: normalizeMemoMap(memoByHallKey),
+      })
+    );
+  } catch (error) {
+    // Ignore session storage failures so the main experience keeps working.
+  }
+};
+
+const clearShareSession = () => {
+  activeShareSessionLabel = "";
+
+  if (typeof window.sessionStorage === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.removeItem(SHARE_SESSION_STORAGE_KEY);
+  } catch (error) {
+    // Ignore session storage failures so the main experience keeps working.
+  }
+};
+
+const loadShareSession = () => {
+  if (typeof window.sessionStorage === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawValue = window.sessionStorage.getItem(SHARE_SESSION_STORAGE_KEY);
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    const hallLookup = buildFavoriteLookup();
+
+    return {
+      sourceLabel: String(parsedValue?.sourceLabel || "공유 링크").trim() || "공유 링크",
+      favorites: normalizeFavoriteEntries(parsedValue?.favorites, hallLookup).entries,
+      memos: normalizeMemoMap(parsedValue?.memos),
+    };
+  } catch (error) {
+    return null;
+  }
 };
 
 const mergeImportedFavoriteEntries = (importedEntries) => {
@@ -636,19 +947,15 @@ const importSharedPayload = (payload, sourceLabel = "공유 링크") => {
     throw new Error("공유 데이터 안에 불러올 즐겨찾기나 메모가 없습니다.");
   }
 
-  favoriteEntries = mergeImportedFavoriteEntries(normalizedFavorites);
-  memoByHallKey = {
-    ...memoByHallKey,
-    ...normalizedMemos,
-  };
-
-  saveFavoriteEntries();
-  saveUserMemos();
+  activeShareSessionLabel = sourceLabel;
+  favoriteEntries = normalizedFavorites;
+  memoByHallKey = normalizedMemos;
+  saveShareSession();
   prepareShareUrl();
   update();
 
   setSourceStatus(
-    `${sourceLabel}를 불러왔습니다. 즐겨찾기 ${normalizedFavorites.length}개와 메모 ${Object.keys(normalizedMemos).length}건을 합쳤습니다.`,
+    `${sourceLabel}를 이 창의 임시 공유본으로 열었습니다. 내 기본 목록은 바뀌지 않았습니다.`,
     "is-success"
   );
 };
@@ -723,12 +1030,40 @@ const showManualCopyPrompt = (text) => {
 };
 
 const copyShareLink = async () => {
-  if (!favoriteEntries.length && !Object.keys(memoByHallKey).length) {
+  if (!canUseSharedRooms() && !favoriteEntries.length && !Object.keys(memoByHallKey).length) {
     setSourceStatus("공유할 즐겨찾기나 메모가 아직 없습니다.", "is-error");
     return;
   }
 
   try {
+    if (canUseSharedRooms()) {
+      const createdNewRoom = !isSharedRoomMode();
+
+      if (createdNewRoom) {
+        await createSharedRoomFromCurrentState();
+      } else {
+        await syncSharedRoomNow();
+      }
+
+      const shareUrl = getSharedRoomUrl();
+      const copied = await copyText(shareUrl);
+
+      if (!copied) {
+        showManualCopyPrompt(shareUrl);
+        setSourceStatus("자동 복사가 막혀 공유 room 링크를 직접 복사할 수 있게 열어드렸습니다.", "is-success");
+        return;
+      }
+
+      setSourceStatus(
+        createdNewRoom
+          ? `${getSharedRoomLabel()}을 만들고 링크를 복사했습니다. 이 링크를 열면 같은 즐겨찾기와 메모를 함께 수정할 수 있습니다.`
+          : `${getSharedRoomLabel()} 링크를 복사했습니다. 이 링크를 연 사람과 같은 즐겨찾기와 메모를 함께 수정할 수 있습니다.`,
+        "is-success"
+      );
+      prepareShareUrl();
+      return;
+    }
+
     const payloadText = JSON.stringify(buildSharePayload());
     const shareUrl =
       preparedSharePayloadKey === payloadText && preparedShareUrl
@@ -773,6 +1108,10 @@ const clearSharedHashFromUrl = () => {
 };
 
 const applySharedLinkFromUrl = async () => {
+  if (isSharedRoomMode()) {
+    return;
+  }
+
   const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
   if (!hash) {
     return;
@@ -1057,21 +1396,55 @@ const rebuildDistrictOptions = () => {
   }
 };
 
+activeRoomId = getRoomIdFromUrl();
+
 favoriteEntries = loadFavoriteEntries();
-if (shouldPersistMigratedFavorites && favoriteEntries.length) {
+if (!isSharedRoomMode() && shouldPersistMigratedFavorites && favoriteEntries.length) {
   saveFavoriteEntries();
 }
 memoByHallKey = loadUserMemos();
 prepareShareUrl();
 
+const restoreShareSessionIfNeeded = () => {
+  if (isSharedRoomMode()) {
+    return false;
+  }
+
+  const savedSession = loadShareSession();
+  if (!savedSession) {
+    return false;
+  }
+
+  activeShareSessionLabel = savedSession.sourceLabel;
+  favoriteEntries = savedSession.favorites;
+  memoByHallKey = savedSession.memos;
+  prepareShareUrl();
+  setSourceStatus(`${activeShareSessionLabel} 임시본을 이 창에서 이어서 보고 있습니다.`, "is-success");
+  return true;
+};
+
 const renderFavorites = (items, guestCount) => {
   const storedFavoriteCount = favoriteEntries.length;
 
   favoriteCountBadge.textContent = `${numberFormatter.format(storedFavoriteCount)}개`;
+  if (copyShareLinkButton) {
+    copyShareLinkButton.textContent = canUseSharedRooms()
+      ? isSharedRoomMode()
+        ? "공유 room 링크 복사"
+        : "공유 room 만들기"
+      : "공유 링크 복사";
+  }
+  if (restoreLocalDataButton) {
+    restoreLocalDataButton.hidden = !(activeShareSessionLabel || isSharedRoomMode());
+  }
   clearFavoritesButton.hidden = storedFavoriteCount === 0;
 
   if (!storedFavoriteCount) {
-    favoriteSummary.textContent = "별 버튼을 눌러 마음에 드는 웨딩홀을 따로 모아보세요.";
+    favoriteSummary.textContent = isSharedRoomMode()
+      ? `${getSharedRoomLabel()}에 연결되어 있습니다. 이 링크를 연 사람끼리 같은 즐겨찾기와 메모를 함께 수정합니다.`
+      : activeShareSessionLabel
+        ? `${activeShareSessionLabel} 임시본입니다. 이 창의 변경 내용은 내 기본 목록에 자동 저장되지 않습니다.`
+        : "별 버튼을 눌러 마음에 드는 웨딩홀을 따로 모아보세요.";
     favoriteList.innerHTML = `
       <div class="empty-state favorite-empty-state">
         아직 찜한 웨딩홀이 없습니다.<br />
@@ -1081,7 +1454,11 @@ const renderFavorites = (items, guestCount) => {
     return;
   }
 
-  favoriteSummary.textContent = `총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀을 찜해두었습니다. 이후 데이터가 업데이트되어도 이 목록은 저장 당시 정보 기준으로 유지됩니다.`;
+  favoriteSummary.textContent = isSharedRoomMode()
+    ? `${getSharedRoomLabel()}에 총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀이 담겨 있습니다. 이 링크를 받은 사람과 즐겨찾기와 메모를 함께 이어서 수정할 수 있습니다.`
+    : activeShareSessionLabel
+      ? `${activeShareSessionLabel} 임시본입니다. 총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀과 메모를 이 창에서만 따로 보고 있습니다.`
+      : `총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀을 찜해두었습니다. 이후 데이터가 업데이트되어도 이 목록은 저장 당시 정보 기준으로 유지됩니다.`;
 
   favoriteList.innerHTML = items
     .map((hall) => `
@@ -1268,6 +1645,21 @@ const resetFilters = () => {
   districtSelect.value = "";
   sortSelect.value = "totalAsc";
   update();
+};
+
+const restoreLocalDataView = () => {
+  if (isSharedRoomMode()) {
+    stopSharedRoomSubscription();
+    activeRoomId = "";
+    updateRoomUrl("");
+  }
+
+  clearShareSession();
+  favoriteEntries = loadFavoriteEntries();
+  memoByHallKey = loadUserMemos();
+  prepareShareUrl();
+  update();
+  setSourceStatus("내 기기에 저장된 기본 즐겨찾기와 메모로 돌아왔습니다.", "is-success");
 };
 
 const setSourceStatus = (message, type = "") => {
@@ -1531,6 +1923,7 @@ const loadWorkbookFile = async (file) => loadWorkbookBuffer(await file.arrayBuff
 const useBuiltinData = (message = "기본 내장 데이터를 불러왔습니다.", type = "is-success") => {
   halls = [...builtinHalls];
   rebuildDistrictOptions();
+  refreshSharedRoomStateAfterHallRefresh();
   dataSourceLabel.textContent = "기본 내장 데이터 사용 중";
   setSourceStatus(message, type);
   update();
@@ -1551,6 +1944,7 @@ const tryLoadDefaultWorkbook = async () => {
 
       halls = workbookData.halls;
       rebuildDistrictOptions();
+      refreshSharedRoomStateAfterHallRefresh();
       dataSourceLabel.textContent = `${fileName} 자동 반영 중`;
       setSourceStatus(`페이지를 열면서 '${fileName}'의 Master_60 시트를 읽어 ${workbookData.halls.length}개 홀을 자동 반영했습니다.`, "is-success");
       update();
@@ -1581,6 +1975,7 @@ const handleExcelUpload = async (event) => {
       const mergedResult = mergeHallDatasets(halls, workbookData.halls);
       halls = mergedResult.halls;
       rebuildDistrictOptions();
+      refreshSharedRoomStateAfterHallRefresh();
       dataSourceLabel.textContent = `기존 데이터 + ${file.name} 양식 반영`;
       setSourceStatus(
         `'${file.name}' 양식을 반영했습니다. 신규 ${mergedResult.addedCount}개, 업데이트 ${mergedResult.updatedCount}개, 현재 총 ${mergedResult.halls.length}개 홀입니다.`,
@@ -1592,6 +1987,7 @@ const handleExcelUpload = async (event) => {
 
     halls = workbookData.halls;
     rebuildDistrictOptions();
+    refreshSharedRoomStateAfterHallRefresh();
     dataSourceLabel.textContent = `${file.name} 업로드 데이터 사용 중`;
     setSourceStatus(`'${file.name}'의 Master_60 시트를 불러왔습니다. 총 ${workbookData.halls.length}개 홀을 반영했습니다.`, "is-success");
     update();
@@ -1646,6 +2042,7 @@ reloadBuiltinButton.addEventListener("click", handleBuiltinReload);
 updateRefreshButton?.addEventListener("click", applyPendingUpdate);
 updateDismissButton?.addEventListener("click", hideUpdateBanner);
 copyShareLinkButton?.addEventListener("click", copyShareLink);
+restoreLocalDataButton?.addEventListener("click", restoreLocalDataView);
 cardList?.addEventListener("click", handleFavoriteButtonClick);
 resultTableBody?.addEventListener("click", handleFavoriteButtonClick);
 favoriteList?.addEventListener("click", handleFavoriteButtonClick);
@@ -1662,7 +2059,12 @@ window.addEventListener("weddingpick:update-ready", (event) => {
 });
 
 rebuildDistrictOptions();
+restoreShareSessionIfNeeded();
 update();
 
 handleBuiltinReload();
-applySharedLinkFromUrl();
+if (isSharedRoomMode()) {
+  activateSharedRoom(activeRoomId, { updateHistory: false });
+} else {
+  applySharedLinkFromUrl();
+}
