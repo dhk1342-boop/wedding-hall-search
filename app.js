@@ -60,6 +60,7 @@ let activeRoomValueListener = null;
 let latestRoomSnapshotValue = null;
 let pendingRoomSyncTimeoutId = 0;
 let sharedRoomInitialLoadComplete = false;
+let latestAppliedRoomSignature = "";
 
 const numberFormatter = new Intl.NumberFormat("ko-KR");
 const textEncoder = new TextEncoder();
@@ -138,6 +139,15 @@ const sanitizeText = (value) => String(value ?? "").replace(/[&<>"']/g, (char) =
   '"': "&quot;",
   "'": "&#39;",
 }[char]));
+
+const escapeAttributeSelector = (value) => {
+  const normalized = String(value ?? "");
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(normalized);
+  }
+
+  return normalized.replace(/["\\]/g, "\\$&");
+};
 
 const getDisplayText = (value, fallback = "-") => {
   if (typeof value === "string" && value.trim()) {
@@ -614,6 +624,20 @@ const buildSharedRoomPayload = () => ({
   updatedAt: window.firebase?.database?.ServerValue?.TIMESTAMP ?? Date.now(),
 });
 
+const buildSharedRoomSignature = (roomPayload) => {
+  const favoriteTokens = getSharedRoomFavoriteTokens(roomPayload).sort();
+  const memoMap = roomPayload?.memos && typeof roomPayload.memos === "object" && !Array.isArray(roomPayload.memos) ? roomPayload.memos : {};
+  const normalizedMemos = Object.entries(memoMap)
+    .map(([reference, memo]) => [String(reference || "").trim(), typeof memo === "string" ? memo : ""])
+    .filter(([reference, memo]) => reference && memo.trim())
+    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey, "ko"));
+
+  return JSON.stringify({
+    favorites: favoriteTokens,
+    memos: normalizedMemos,
+  });
+};
+
 const normalizeSharedRoomPayload = (roomPayload) => {
   const hallLookup = buildFavoriteLookup();
   const shareTokenLookup = buildShareTokenLookup();
@@ -691,17 +715,48 @@ const stopSharedRoomSubscription = () => {
   activeRoomValueListener = null;
   latestRoomSnapshotValue = null;
   sharedRoomInitialLoadComplete = false;
+  latestAppliedRoomSignature = "";
 };
 
 const applySharedRoomState = (roomPayload) => {
   latestRoomSnapshotValue = roomPayload;
+  const nextSignature = buildSharedRoomSignature(roomPayload || {});
+
+  if (sharedRoomInitialLoadComplete && nextSignature === latestAppliedRoomSignature) {
+    prepareShareUrl();
+    return;
+  }
 
   const normalizedPayload = normalizeSharedRoomPayload(roomPayload || {});
+  const previousScrollY = window.scrollY;
+  const previousActiveElement = document.activeElement;
+  const previousActiveMemoKey =
+    previousActiveElement instanceof HTMLElement ? previousActiveElement.getAttribute("data-memo-key") || "" : "";
+  const previousSelectionStart =
+    previousActiveElement instanceof HTMLTextAreaElement ? previousActiveElement.selectionStart : null;
+  const previousSelectionEnd =
+    previousActiveElement instanceof HTMLTextAreaElement ? previousActiveElement.selectionEnd : null;
+
   activeShareSessionLabel = "";
   favoriteEntries = normalizedPayload.favorites;
   memoByHallKey = normalizedPayload.memos;
+  latestAppliedRoomSignature = nextSignature;
   prepareShareUrl();
   update();
+
+  window.requestAnimationFrame(() => {
+    window.scrollTo({ top: previousScrollY });
+
+    if (previousActiveMemoKey) {
+      const nextMemoField = document.querySelector(`[data-memo-key="${escapeAttributeSelector(previousActiveMemoKey)}"]`);
+      if (nextMemoField instanceof HTMLTextAreaElement) {
+        nextMemoField.focus();
+        if (typeof previousSelectionStart === "number" && typeof previousSelectionEnd === "number") {
+          nextMemoField.setSelectionRange(previousSelectionStart, previousSelectionEnd);
+        }
+      }
+    }
+  });
 };
 
 const refreshSharedRoomStateAfterHallRefresh = () => {
@@ -711,7 +766,6 @@ const refreshSharedRoomStateAfterHallRefresh = () => {
 
   applySharedRoomState(latestRoomSnapshotValue || {});
 };
-
 const syncSharedRoomNow = async () => {
   if (!isSharedRoomMode() || !activeRoomRef) {
     return;
@@ -723,7 +777,9 @@ const syncSharedRoomNow = async () => {
   }
 
   try {
-    await activeRoomRef.set(buildSharedRoomPayload());
+    const nextPayload = buildSharedRoomPayload();
+    latestAppliedRoomSignature = buildSharedRoomSignature(nextPayload);
+    await activeRoomRef.set(nextPayload);
   } catch (error) {
     setSourceStatus("공유 room 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "is-error");
   }
@@ -1503,7 +1559,6 @@ const renderFavorites = (items, guestCount) => {
     `)
     .join("");
 };
-
 const renderCards = (items, guestCount) => {
   if (!items.length) {
     cardList.innerHTML = `
