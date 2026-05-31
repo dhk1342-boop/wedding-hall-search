@@ -1,15 +1,13 @@
-const CACHE_NAME = "wedding-hall-search-v20260411app27";
+const CACHE_NAME = "wedding-hall-search-v20260601app28";
 const APP_SHELL_FILES = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./firebase-config.js",
-  "./data.js",
   "./manifest.webmanifest",
   "./register-pwa.js",
   "./웨딩홀_업로드_양식.xlsx",
-  "./seoul_wedding_master_final_pro.xlsx",
   "./assets/icons/favicon.svg",
   "./assets/icons/app-icon.svg",
   "./assets/icons/app-icon-maskable.svg",
@@ -24,6 +22,18 @@ const APP_SHELL_FILES = [
   "./apple-touch-icon-152x152.png",
   "./weddingpick-touch-icon.png"
 ];
+
+const LIVE_DATA_FILE_NAMES = new Set([
+  "data.js",
+  "웨딩홀 정보.xlsx",
+  "seoul_wedding_master_final_pro.xlsx",
+]);
+
+const isLiveDataRequest = (requestUrl) => {
+  const pathname = decodeURIComponent(requestUrl.pathname || "");
+  const fileName = pathname.split("/").pop() || "";
+  return LIVE_DATA_FILE_NAMES.has(fileName);
+};
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -60,6 +70,21 @@ self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
 
   if (!/^https?:$/.test(requestUrl.protocol)) {
+    return;
+  }
+
+  if (isLiveDataRequest(requestUrl)) {
+    event.respondWith(
+      fetch(event.request, { cache: "no-store" })
+        .then((response) => {
+          if (response && response.ok) {
+            const cloned = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cloned));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request, { ignoreSearch: true }))
+    );
     return;
   }
 
