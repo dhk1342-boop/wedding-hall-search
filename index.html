@@ -9,12 +9,12 @@
     <meta name="apple-mobile-web-app-title" content="웨딩홀픽" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>웨딩홀픽</title>
-    <link rel="manifest" href="./manifest.webmanifest?v=20260601app28" />
-    <link rel="icon" href="./assets/icons/favicon.svg?v=20260601app28" type="image/svg+xml" />
+    <link rel="manifest" href="./manifest.webmanifest?v=20260601app31" />
+    <link rel="icon" href="./assets/icons/favicon.svg?v=20260601app31" type="image/svg+xml" />
     <link rel="icon" href="/wedding-hall-search/weddingpick-touch-icon.png" sizes="180x180" type="image/png" />
     <link rel="icon" href="/wedding-hall-search/assets/icons/app-icon-192.png" sizes="192x192" type="image/png" />
     <link rel="apple-touch-icon" href="/wedding-hall-search/weddingpick-touch-icon.png" />
-    <link rel="stylesheet" href="./styles.css?v=20260322m10" />
+    <link rel="stylesheet" href="./styles.css?v=20260601hallcheck2" />
   </head>
   <body>
     <div class="page-shell">
@@ -76,15 +76,12 @@
           </p>
         </div>
 
-        <div class="hero-note">
-          <p>이용 흐름</p>
-          <div class="hero-note-grid">
-            <strong>1. 양식 다운로드</strong>
-            <strong>2. 원하는 홀 정보 입력</strong>
-            <strong>3. 업로드 후 바로 병합</strong>
-            <strong>4. 조건 넣고 즉시 비교</strong>
+        <div class="hero-note checklist-hall-panel">
+          <div class="checklist-hall-panel-head">
+            <p>홀 계약 체크리스트</p>
+            <span class="checklist-hall-panel-foot">찜한 웨딩홀만 자동으로 추가되고, 각 홀을 누르면 팝업에서 체크리스트와 계약 메모를 따로 저장할 수 있습니다.</span>
           </div>
-          <span class="hero-note-foot">홈 화면에 추가하면 브라우저 주소창 없이 더 앱처럼 사용할 수 있습니다.</span>
+          <div id="checklistHallList" class="checklist-hall-list" aria-live="polite"></div>
         </div>
       </header>
 
@@ -248,11 +245,88 @@
       </main>
     </div>
 
+    <div id="consultationChecklistModal" class="checklist-modal" hidden>
+      <button type="button" class="checklist-modal-backdrop" data-checklist-modal-close aria-label="체크리스트 닫기"></button>
+      <section
+        id="consultationChecklistPanel"
+        class="panel checklist-panel checklist-modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="consultationChecklistTitle"
+      >
+        <div class="checklist-modal-topbar">
+          <div class="checklist-modal-topbar-copy">
+            <span class="checklist-eyebrow">Hall Contract Checklist</span>
+            <p class="checklist-modal-caption">찜한 홀별로 따로 저장되고, 공유 room에서는 자동으로 함께 동기화됩니다.</p>
+          </div>
+          <button id="checklistModalCloseButton" type="button" class="checklist-modal-close-button" aria-label="체크리스트 닫기">닫기</button>
+        </div>
+
+        <div class="checklist-panel-head">
+          <div class="checklist-panel-copy">
+            <h2 id="consultationChecklistTitle">웨딩홀 계약 체크리스트</h2>
+            <p class="checklist-intro">
+              선택한 웨딩홀의 계약 전에 확인해야 할 항목과 메모를 홀별로 따로 관리할 수 있어요.
+            </p>
+            <div class="checklist-selected-hall">
+              <span class="checklist-selected-hall-label">선택한 홀</span>
+              <strong id="checklistSelectedHallName">찜한 웨딩홀을 먼저 추가해주세요</strong>
+              <p id="checklistSelectedHallMeta" class="checklist-selected-hall-meta">
+                별 버튼으로 홀을 찜하면 이곳에 자동으로 계약 체크리스트가 연결됩니다.
+              </p>
+            </div>
+          </div>
+
+          <div class="checklist-progress-card" aria-live="polite">
+            <div class="checklist-progress-copy">
+              <span class="checklist-progress-label">선택한 홀 진행률</span>
+              <strong id="checklistProgressPercent">0%</strong>
+            </div>
+            <div class="checklist-progress-bar" aria-hidden="true">
+              <span id="checklistProgressBar" class="checklist-progress-fill"></span>
+            </div>
+            <p id="checklistProgressText" class="checklist-progress-text">총 0개 중 0개 완료</p>
+          </div>
+        </div>
+
+        <div class="checklist-toolbar">
+          <div class="checklist-stats" aria-live="polite">
+            <span class="checklist-stat">
+              <strong id="checklistCompletedCount">0</strong>
+              완료
+            </span>
+            <span class="checklist-stat">
+              <strong id="checklistRemainingCount">0</strong>
+              남음
+            </span>
+            <span class="checklist-stat">
+              <strong id="checklistTotalCount">0</strong>
+              전체
+            </span>
+          </div>
+
+          <button id="checklistResetButton" type="button" class="ghost-button checklist-reset-button">체크 초기화</button>
+        </div>
+
+        <div id="checklistCategoryGrid" class="checklist-category-grid"></div>
+
+        <div class="checklist-note-block">
+          <label class="checklist-note-label" for="consultationMemo">홀 계약 메모</label>
+          <textarea
+            id="consultationMemo"
+            class="checklist-note-textarea"
+            placeholder="예: 최종 보증인원 조정은 예식 10일 전까지 가능, 무료 혜택은 계약서 별첨에 꼭 반영 요청"
+          ></textarea>
+          <p class="checklist-note-help">체크리스트에 없는 특이사항, 구두 약속, 계약서에 꼭 넣어야 할 문구를 홀별로 따로 적어둘 수 있어요.</p>
+        </div>
+      </section>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-database-compat.js"></script>
     <script src="./firebase-config.js?v=20260411m21"></script>
-    <script src="./register-pwa.js?v=20260601app28"></script>
+    <script src="./register-pwa.js?v=20260601app31"></script>
     <script src="./data.js?v=20260601m23"></script>
-    <script src="./app.js?v=20260411m22"></script>
+    <script src="./app.js?v=20260601hallcheck2"></script>
   </body>
 </html>

@@ -24,6 +24,21 @@ const copyShareLinkButton = document.querySelector("#copyShareLinkButton");
 const restoreLocalDataButton = document.querySelector("#restoreLocalDataButton");
 const clearFavoritesButton = document.querySelector("#clearFavoritesButton");
 const favoriteList = document.querySelector("#favoriteList");
+const checklistHallList = document.querySelector("#checklistHallList");
+const checklistModal = document.querySelector("#consultationChecklistModal");
+const checklistPanel = document.querySelector("#consultationChecklistPanel");
+const checklistCategoryGrid = document.querySelector("#checklistCategoryGrid");
+const checklistCompletedCount = document.querySelector("#checklistCompletedCount");
+const checklistRemainingCount = document.querySelector("#checklistRemainingCount");
+const checklistTotalCount = document.querySelector("#checklistTotalCount");
+const checklistProgressPercent = document.querySelector("#checklistProgressPercent");
+const checklistProgressText = document.querySelector("#checklistProgressText");
+const checklistProgressBar = document.querySelector("#checklistProgressBar");
+const checklistResetButton = document.querySelector("#checklistResetButton");
+const consultationMemo = document.querySelector("#consultationMemo");
+const checklistSelectedHallName = document.querySelector("#checklistSelectedHallName");
+const checklistSelectedHallMeta = document.querySelector("#checklistSelectedHallMeta");
+const checklistModalCloseButton = document.querySelector("#checklistModalCloseButton");
 
 const totalCount = document.querySelector("#totalCount");
 const resultCount = document.querySelector("#resultCount");
@@ -40,12 +55,15 @@ const resultTableBody = document.querySelector("#resultTableBody");
 
 const FAVORITES_STORAGE_KEY = "weddingpick-favorites";
 const MEMOS_STORAGE_KEY = "weddingpick-user-memos";
+const CHECKLIST_STORAGE_KEY = "weddingpick-consultation-checklist";
+const CHECKLIST_MEMO_STORAGE_KEY = "weddingpick-consultation-memo";
 const SHARE_SESSION_STORAGE_KEY = "weddingpick-share-session";
 const SHARE_FILE_VERSION = 4;
 const SHARE_HASH_KEY = "share";
 const ROOM_QUERY_KEY = "room";
 const ROOM_STORAGE_PATH = "rooms";
 const ROOM_SYNC_DEBOUNCE_MS = 600;
+const LEGACY_CHECKLIST_HALL_KEY = "__legacy__";
 
 let pendingUpdateRegistration = null;
 let favoriteEntries = [];
@@ -61,10 +79,111 @@ let latestRoomSnapshotValue = null;
 let pendingRoomSyncTimeoutId = 0;
 let sharedRoomInitialLoadComplete = false;
 let latestAppliedRoomSignature = "";
+let checklistStateByHallKey = {};
+let checklistMemoByHallKey = {};
+let selectedChecklistHallKey = "";
+let isChecklistModalOpen = false;
 
 const numberFormatter = new Intl.NumberFormat("ko-KR");
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder("utf-8");
+
+const CONSULTATION_CHECKLIST = [
+  {
+    id: "pre-contract-check",
+    eyebrow: "5-Minute Safety Check",
+    title: "계약 전 5분 핵심 점검",
+    description: "계약 직전에 꼭 확인해야 할 사업자, 계좌, 보증인원, 환불 기준을 먼저 묶었습니다.",
+    items: [
+      { id: "business-status-check", text: "홈택스에서 사업자등록상태가 계속사업자인지 확인하기" },
+      { id: "contract-party-match", text: "계약서 상호, 견적서 상호, 입금계좌 예금주가 모두 일치하는지 확인하기" },
+      { id: "total-quote-breakdown", text: "대관료, 식대, 음료, 주류, 꽃, 연출, 부가세, 봉사료까지 항목별 총견적 확인하기" },
+      { id: "deposit-payment-proof", text: "계약금 금액, 결제수단, 영수증 발급, 환불 가능일을 함께 확인하기" },
+      { id: "guarantee-deadline-check", text: "최초/최종 보증인원과 조정 마감일, 초과 시 추가금 기준 확인하기" },
+      { id: "refund-penalty-check", text: "취소·환불·위약금 기준이 표준약관과 다르게 적혀 있지 않은지 확인하기" },
+      { id: "external-vendor-basic-check", text: "외부 스냅, DVD, 사회자, 축가, 포토부스 반입 가능 여부와 반입료 확인하기" },
+      { id: "parking-overflow-check", text: "무료 주차 시간, 가능 대수, 만차 시 대체 주차장과 처리 방식 확인하기" },
+    ],
+  },
+  {
+    id: "cost-benefits-contract",
+    eyebrow: "Cost & Contract",
+    title: "비용 · 계약 · 혜택",
+    description: "상담 내용이 실제 계약서와 견적서에 남도록 만드는 핵심 질문들입니다.",
+    items: [
+      { id: "rental-timeline", text: "대여 시간과 식 진행 타임테이블이 정확히 어떻게 되는지 확인하기" },
+      { id: "itemized-quote", text: "견적서를 항목별로 따로 받아서 금액 구조를 확인하기" },
+      { id: "vat-service-included", text: "견적에 부가세와 봉사료가 포함되어 있는지 확인하기" },
+      { id: "payment-schedule", text: "계약금과 잔금 납부 시점을 문서로 확인하기" },
+      { id: "deposit-refund-window", text: "계약금 환불 가능 기간과 환불 기준을 확인하기" },
+      { id: "cash-benefit-receipt", text: "현금 결제 혜택과 현금영수증 가능 여부를 확인하기" },
+      { id: "same-day-benefit-written", text: "당일 계약 혜택이 무엇인지 확인하고 계약서 반영 가능 여부 묻기" },
+      { id: "verbal-promise-written", text: "상담 내용과 무료 제공 혜택을 계약서 또는 별첨에 명시 요청하기" },
+    ],
+  },
+  {
+    id: "guests-meal-ticket",
+    eyebrow: "Guests & Meal",
+    title: "인원 · 식사 · 식권",
+    description: "최종 총비용과 하객 만족도에 직접 연결되는 식사와 보증인원 조건입니다.",
+    items: [
+      { id: "chair-count", text: "기본으로 깔려 있는 의자 수를 확인하기" },
+      { id: "guarantee-adjust-deadline", text: "보증인원 조정을 언제까지 할 수 있는지 확인하기" },
+      { id: "meal-buffer", text: "식사 여유분이 얼마나 준비되는지 확인하기" },
+      { id: "menu-count", text: "음식 종류와 가짓수를 확인하기" },
+      { id: "drink-alcohol-policy", text: "주류와 음료가 포함인지, 별도 비용인지 확인하기" },
+      { id: "tasting-schedule", text: "사전 시식 일정과 신청 시점을 확인하기" },
+      { id: "child-age-standard", text: "소인 기준이 몇 살인지 확인하기" },
+      { id: "child-price-policy", text: "소인 요금과 보증인원 포함 여부를 확인하기" },
+      { id: "over-guarantee-extra-fee", text: "보증인원 초과 시 식비만 추가인지 음료·봉사료도 추가인지 확인하기" },
+      { id: "meal-ticket-policy", text: "식권 제공 여부와 번호, 회수, 분실 처리 기준을 확인하기" },
+    ],
+  },
+  {
+    id: "parking-access",
+    eyebrow: "Parking & Access",
+    title: "주차 · 동선",
+    description: "하객 불만이 생기기 쉬운 주차, 혼주 차량, 대체 동선 조건을 확인하는 묶음입니다.",
+    items: [
+      { id: "parking-hours-capacity", text: "주차 무료 시간과 가능 대수를 확인하기" },
+      { id: "family-car-policy", text: "혼주 차량 가능 대수와 이용 가능 시간을 확인하기" },
+      { id: "parking-rush-hour", text: "후기 기준으로 특히 주차가 몰리는 시간대가 있는지 확인하기" },
+      { id: "overflow-parking-policy", text: "만차 시 대체 주차장, 셔틀, 주차요금 처리 기준을 확인하기" },
+    ],
+  },
+  {
+    id: "hall-items-storage",
+    eyebrow: "Hall & Storage",
+    title: "홀 · 연출 · 물품 · 보관",
+    description: "현장 공간, 반입 물품, 대기실 동선처럼 당일 만족도를 좌우하는 항목입니다.",
+    items: [
+      { id: "flower-shower-fee", text: "플라워 샤워가 유료인지 확인하기" },
+      { id: "storage-box-count", text: "가족 짐 보관함이 몇 개 제공되는지 확인하기" },
+      { id: "wreath-policy", text: "화환 반입이 가능한지 확인하기" },
+      { id: "photo-table-frame", text: "포토테이블 액자 사이즈와 추가 금액 여부를 확인하기" },
+      { id: "easel-rental-count", text: "이젤 대여 가능 개수를 확인하기" },
+      { id: "lobby-flower-season", text: "로비 테이블 꽃 색상이 계절마다 바뀌는지 확인하기" },
+      { id: "waiting-room-flow", text: "신부대기실, 폐백실, 혼주대기실, 연회장 위치와 동선을 확인하기" },
+    ],
+  },
+  {
+    id: "vendors-fraud-prevention",
+    eyebrow: "Vendors & Fraud",
+    title: "사회자 · 외부업체 · 사기방지",
+    description: "외부업체 제약과 계약 분쟁 방지 요소를 함께 체크하는 마지막 안전망입니다.",
+    items: [
+      { id: "professional-mc", text: "전문 사회자 진행이 가능한지 확인하기" },
+      { id: "linked-snap-dvd", text: "본식 스냅과 DVD를 홀 연계 업체로만 진행해야 하는지 확인하기" },
+      { id: "external-vendors-allowed", text: "외부 스냅, DVD, 영상, 사회자, 축가, 포토부스 반입 가능 여부를 확인하기" },
+      { id: "vendor-loadin-fees", text: "외부업체 반입료, 작업 가능 시간, 전기 사용, 장비 반입 제한을 확인하기" },
+      { id: "account-holder-match", text: "입금계좌 예금주가 계약 상대 사업자와 일치하는지 다시 확인하기" },
+      { id: "refund-policy-written", text: "환불·위약금 기준과 무료 혜택이 계약서에 실제로 적혀 있는지 확인하기" },
+      { id: "special-clause-written", text: "구두로 들은 약속은 모두 계약서, 별첨, 특약 문구로 남기기" },
+    ],
+  },
+];
+
+const CONSULTATION_CHECKLIST_ITEM_IDS = new Set(CONSULTATION_CHECKLIST.flatMap((category) => category.items.map((item) => item.id)));
 
 const formatMoney = (value) => (typeof value === "number" && Number.isFinite(value) ? `${numberFormatter.format(value)}원` : "-");
 const formatCount = (value) => (typeof value === "number" && Number.isFinite(value) ? `${numberFormatter.format(value)}명` : "-");
@@ -302,6 +421,135 @@ const saveUserMemos = () => {
 
   try {
     window.localStorage.setItem(MEMOS_STORAGE_KEY, JSON.stringify(memoByHallKey));
+  } catch (error) {
+    // Ignore storage failures so the main experience keeps working.
+  }
+};
+
+const normalizeChecklistItemState = (value) => {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  return Object.entries(value).reduce((accumulator, [itemId, checked]) => {
+    if (CONSULTATION_CHECKLIST_ITEM_IDS.has(itemId) && checked === true) {
+      accumulator[itemId] = true;
+    }
+    return accumulator;
+  }, {});
+};
+
+const normalizeChecklistStateMap = (value) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const entries = Object.entries(value);
+  const looksLikeLegacyState = entries.some(([key]) => CONSULTATION_CHECKLIST_ITEM_IDS.has(String(key || "").trim()));
+
+  if (looksLikeLegacyState) {
+    const normalizedLegacyState = normalizeChecklistItemState(value);
+    return Object.keys(normalizedLegacyState).length ? { [LEGACY_CHECKLIST_HALL_KEY]: normalizedLegacyState } : {};
+  }
+
+  return entries.reduce((accumulator, [hallKey, hallState]) => {
+    const normalizedHallKey = String(hallKey || "").trim();
+    const normalizedHallState = normalizeChecklistItemState(hallState);
+    if (normalizedHallKey && Object.keys(normalizedHallState).length) {
+      accumulator[normalizedHallKey] = normalizedHallState;
+    }
+    return accumulator;
+  }, {});
+};
+
+const normalizeChecklistMemoMap = (value) => {
+  if (typeof value === "string") {
+    const normalizedLegacyMemo = value.replace(/\r\n/g, "\n");
+    return normalizedLegacyMemo.trim() ? { [LEGACY_CHECKLIST_HALL_KEY]: normalizedLegacyMemo } : {};
+  }
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce((accumulator, [hallKey, memo]) => {
+    const normalizedHallKey = String(hallKey || "").trim();
+    const normalizedMemo = typeof memo === "string" ? memo.replace(/\r\n/g, "\n") : "";
+    if (normalizedHallKey && normalizedMemo.trim()) {
+      accumulator[normalizedHallKey] = normalizedMemo;
+    }
+    return accumulator;
+  }, {});
+};
+
+const loadChecklistState = () => {
+  if (typeof window.localStorage === "undefined") {
+    return {};
+  }
+
+  try {
+    return normalizeChecklistStateMap(JSON.parse(window.localStorage.getItem(CHECKLIST_STORAGE_KEY) || "{}"));
+  } catch (error) {
+    return {};
+  }
+};
+
+const saveChecklistState = () => {
+  if (isSharedRoomMode()) {
+    scheduleSharedRoomSync();
+    return;
+  }
+
+  if (activeShareSessionLabel) {
+    saveShareSession();
+    return;
+  }
+
+  if (typeof window.localStorage === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checklistStateByHallKey));
+  } catch (error) {
+    // Ignore storage failures so the main experience keeps working.
+  }
+};
+
+const loadChecklistMemo = () => {
+  if (typeof window.localStorage === "undefined") {
+    return "";
+  }
+
+  try {
+    return normalizeChecklistMemoMap(JSON.parse(window.localStorage.getItem(CHECKLIST_MEMO_STORAGE_KEY) || "{}"));
+  } catch (error) {
+    try {
+      const storedValue = window.localStorage.getItem(CHECKLIST_MEMO_STORAGE_KEY);
+      return normalizeChecklistMemoMap(typeof storedValue === "string" ? storedValue : "");
+    } catch (nestedError) {
+      return {};
+    }
+  }
+};
+
+const saveChecklistMemo = () => {
+  if (isSharedRoomMode()) {
+    scheduleSharedRoomSync();
+    return;
+  }
+
+  if (activeShareSessionLabel) {
+    saveShareSession();
+    return;
+  }
+
+  if (typeof window.localStorage === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(CHECKLIST_MEMO_STORAGE_KEY, JSON.stringify(checklistMemoByHallKey));
   } catch (error) {
     // Ignore storage failures so the main experience keeps working.
   }
@@ -580,6 +828,143 @@ const clearAllFavorites = () => {
 
 const getFavoriteHalls = () => [...favoriteEntries];
 
+const getChecklistStateForHallKey = (hallKey = selectedChecklistHallKey) => normalizeChecklistItemState(checklistStateByHallKey[hallKey]);
+
+const getChecklistMemoForHallKey = (hallKey = selectedChecklistHallKey) =>
+  typeof checklistMemoByHallKey[hallKey] === "string" ? checklistMemoByHallKey[hallKey] : "";
+
+const migrateLegacyChecklistDataIfNeeded = (hallKey) => {
+  if (!hallKey) {
+    return;
+  }
+
+  let changed = false;
+  const nextChecklistStateMap = { ...checklistStateByHallKey };
+  const nextChecklistMemoMap = { ...checklistMemoByHallKey };
+  const legacyChecklistState = normalizeChecklistItemState(nextChecklistStateMap[LEGACY_CHECKLIST_HALL_KEY]);
+  const legacyChecklistMemo = typeof nextChecklistMemoMap[LEGACY_CHECKLIST_HALL_KEY] === "string" ? nextChecklistMemoMap[LEGACY_CHECKLIST_HALL_KEY] : "";
+
+  if (Object.keys(legacyChecklistState).length && !Object.keys(getChecklistStateForHallKey(hallKey)).length) {
+    nextChecklistStateMap[hallKey] = legacyChecklistState;
+    changed = true;
+  }
+
+  if (legacyChecklistMemo.trim() && !getChecklistMemoForHallKey(hallKey).trim()) {
+    nextChecklistMemoMap[hallKey] = legacyChecklistMemo;
+    changed = true;
+  }
+
+  if (Object.keys(legacyChecklistState).length) {
+    delete nextChecklistStateMap[LEGACY_CHECKLIST_HALL_KEY];
+    changed = true;
+  }
+
+  if (legacyChecklistMemo.trim()) {
+    delete nextChecklistMemoMap[LEGACY_CHECKLIST_HALL_KEY];
+    changed = true;
+  }
+
+  if (!changed) {
+    return;
+  }
+
+  checklistStateByHallKey = nextChecklistStateMap;
+  checklistMemoByHallKey = nextChecklistMemoMap;
+  saveChecklistState();
+  saveChecklistMemo();
+};
+
+const ensureSelectedChecklistHallKey = (favoriteItems = getFavoriteHalls()) => {
+  if (!favoriteItems.length) {
+    selectedChecklistHallKey = "";
+    return "";
+  }
+
+  if (!favoriteItems.some((hall) => hall.favoriteKey === selectedChecklistHallKey)) {
+    selectedChecklistHallKey = favoriteItems[0].favoriteKey;
+  }
+
+  migrateLegacyChecklistDataIfNeeded(selectedChecklistHallKey);
+  return selectedChecklistHallKey;
+};
+
+const getSelectedChecklistHall = (favoriteItems = getFavoriteHalls()) => {
+  const activeHallKey = ensureSelectedChecklistHallKey(favoriteItems);
+  return favoriteItems.find((hall) => hall.favoriteKey === activeHallKey) || null;
+};
+
+const openChecklistModal = (hallKey = selectedChecklistHallKey) => {
+  const favoriteItems = getFavoriteHalls();
+  if (!favoriteItems.length || !checklistModal) {
+    return;
+  }
+
+  if (hallKey && favoriteItems.some((hall) => hall.favoriteKey === hallKey)) {
+    selectedChecklistHallKey = hallKey;
+  } else {
+    ensureSelectedChecklistHallKey(favoriteItems);
+  }
+
+  isChecklistModalOpen = true;
+  checklistModal.hidden = false;
+  document.body.classList.add("is-modal-open");
+  renderChecklist();
+
+  window.requestAnimationFrame(() => {
+    checklistModalCloseButton?.focus();
+  });
+};
+
+const closeChecklistModal = () => {
+  if (!checklistModal) {
+    return;
+  }
+
+  isChecklistModalOpen = false;
+  checklistModal.hidden = true;
+  document.body.classList.remove("is-modal-open");
+};
+
+const updateChecklistStateForHallKey = (hallKey, nextChecklistState) => {
+  const normalizedHallKey = String(hallKey || "").trim();
+  if (!normalizedHallKey) {
+    return;
+  }
+
+  const normalizedState = normalizeChecklistItemState(nextChecklistState);
+  const nextChecklistStateMap = { ...checklistStateByHallKey };
+
+  if (Object.keys(normalizedState).length) {
+    nextChecklistStateMap[normalizedHallKey] = normalizedState;
+  } else {
+    delete nextChecklistStateMap[normalizedHallKey];
+  }
+
+  checklistStateByHallKey = nextChecklistStateMap;
+  saveChecklistState();
+  prepareShareUrl();
+};
+
+const updateChecklistMemoByHallKey = (hallKey, memo) => {
+  const normalizedHallKey = String(hallKey || "").trim();
+  if (!normalizedHallKey) {
+    return;
+  }
+
+  const normalizedMemo = String(memo ?? "").replace(/\r\n/g, "\n");
+  const nextChecklistMemoMap = { ...checklistMemoByHallKey };
+
+  if (normalizedMemo.trim()) {
+    nextChecklistMemoMap[normalizedHallKey] = normalizedMemo;
+  } else {
+    delete nextChecklistMemoMap[normalizedHallKey];
+  }
+
+  checklistMemoByHallKey = nextChecklistMemoMap;
+  saveChecklistMemo();
+  prepareShareUrl();
+};
+
 const getShareFavoriteTokens = () =>
   [...new Set(favoriteEntries.map((entry) => getShareTokenFromFavoriteKey(entry.favoriteKey)).filter(Boolean))];
 
@@ -592,10 +977,40 @@ const getShareMemoMap = () =>
     return accumulator;
   }, {});
 
+const getShareChecklistStateMap = () =>
+  Object.entries(checklistStateByHallKey).reduce((accumulator, [hallKey, hallChecklistState]) => {
+    if (hallKey === LEGACY_CHECKLIST_HALL_KEY) {
+      return accumulator;
+    }
+
+    const token = getShareTokenFromFavoriteKey(hallKey);
+    const normalizedChecklistState = normalizeChecklistItemState(hallChecklistState);
+    if (token && Object.keys(normalizedChecklistState).length) {
+      accumulator[token] = normalizedChecklistState;
+    }
+    return accumulator;
+  }, {});
+
+const getShareChecklistMemoMap = () =>
+  Object.entries(checklistMemoByHallKey).reduce((accumulator, [hallKey, memo]) => {
+    if (hallKey === LEGACY_CHECKLIST_HALL_KEY) {
+      return accumulator;
+    }
+
+    const token = getShareTokenFromFavoriteKey(hallKey);
+    const normalizedMemo = typeof memo === "string" ? memo.replace(/\r\n/g, "\n") : "";
+    if (token && normalizedMemo.trim()) {
+      accumulator[token] = normalizedMemo;
+    }
+    return accumulator;
+  }, {});
+
 const buildSharePayload = () => ({
   v: SHARE_FILE_VERSION,
   f: getShareFavoriteTokens(),
   m: getShareMemoMap(),
+  c: getShareChecklistStateMap(),
+  cm: getShareChecklistMemoMap(),
 });
 
 const getSharedRoomFavoriteTokens = (roomPayload) => {
@@ -621,6 +1036,8 @@ const buildSharedRoomPayload = () => ({
     return accumulator;
   }, {}),
   memos: getShareMemoMap(),
+  checklists: getShareChecklistStateMap(),
+  checklistMemos: getShareChecklistMemoMap(),
   updatedAt: window.firebase?.database?.ServerValue?.TIMESTAMP ?? Date.now(),
 });
 
@@ -631,10 +1048,26 @@ const buildSharedRoomSignature = (roomPayload) => {
     .map(([reference, memo]) => [String(reference || "").trim(), typeof memo === "string" ? memo : ""])
     .filter(([reference, memo]) => reference && memo.trim())
     .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey, "ko"));
+  const checklistMap =
+    roomPayload?.checklists && typeof roomPayload.checklists === "object" && !Array.isArray(roomPayload.checklists) ? roomPayload.checklists : {};
+  const normalizedChecklists = Object.entries(checklistMap)
+    .map(([reference, hallChecklistState]) => [String(reference || "").trim(), Object.keys(normalizeChecklistItemState(hallChecklistState)).sort()])
+    .filter(([reference, itemIds]) => reference && itemIds.length)
+    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey, "ko"));
+  const checklistMemoMap =
+    roomPayload?.checklistMemos && typeof roomPayload.checklistMemos === "object" && !Array.isArray(roomPayload.checklistMemos)
+      ? roomPayload.checklistMemos
+      : {};
+  const normalizedChecklistMemos = Object.entries(checklistMemoMap)
+    .map(([reference, memo]) => [String(reference || "").trim(), typeof memo === "string" ? memo : ""])
+    .filter(([reference, memo]) => reference && memo.trim())
+    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey, "ko"));
 
   return JSON.stringify({
     favorites: favoriteTokens,
     memos: normalizedMemos,
+    checklists: normalizedChecklists,
+    checklistMemos: normalizedChecklistMemos,
   });
 };
 
@@ -646,6 +1079,8 @@ const normalizeSharedRoomPayload = (roomPayload) => {
   return {
     favorites: normalizeImportedFavoriteReferences(favoriteReferences, hallLookup, shareTokenLookup),
     memos: normalizeImportedMemoMap(roomPayload?.memos, shareTokenLookup),
+    checklists: normalizeImportedChecklistStateMap(roomPayload?.checklists, shareTokenLookup),
+    checklistMemos: normalizeImportedMemoMap(roomPayload?.checklistMemos, shareTokenLookup),
   };
 };
 
@@ -732,6 +1167,7 @@ const applySharedRoomState = (roomPayload) => {
   const previousActiveElement = document.activeElement;
   const previousActiveMemoKey =
     previousActiveElement instanceof HTMLElement ? previousActiveElement.getAttribute("data-memo-key") || "" : "";
+  const previousActiveElementId = previousActiveElement instanceof HTMLElement ? previousActiveElement.id || "" : "";
   const previousSelectionStart =
     previousActiveElement instanceof HTMLTextAreaElement ? previousActiveElement.selectionStart : null;
   const previousSelectionEnd =
@@ -740,20 +1176,32 @@ const applySharedRoomState = (roomPayload) => {
   activeShareSessionLabel = "";
   favoriteEntries = normalizedPayload.favorites;
   memoByHallKey = normalizedPayload.memos;
+  checklistStateByHallKey = normalizedPayload.checklists;
+  checklistMemoByHallKey = normalizedPayload.checklistMemos;
   latestAppliedRoomSignature = nextSignature;
   prepareShareUrl();
   update();
 
   window.requestAnimationFrame(() => {
     window.scrollTo({ top: previousScrollY });
+    let nextFocusedField = null;
 
     if (previousActiveMemoKey) {
       const nextMemoField = document.querySelector(`[data-memo-key="${escapeAttributeSelector(previousActiveMemoKey)}"]`);
       if (nextMemoField instanceof HTMLTextAreaElement) {
-        nextMemoField.focus();
-        if (typeof previousSelectionStart === "number" && typeof previousSelectionEnd === "number") {
-          nextMemoField.setSelectionRange(previousSelectionStart, previousSelectionEnd);
-        }
+        nextFocusedField = nextMemoField;
+      }
+    } else if (previousActiveElementId) {
+      const nextElementById = document.getElementById(previousActiveElementId);
+      if (nextElementById instanceof HTMLTextAreaElement) {
+        nextFocusedField = nextElementById;
+      }
+    }
+
+    if (nextFocusedField instanceof HTMLTextAreaElement) {
+      nextFocusedField.focus();
+      if (typeof previousSelectionStart === "number" && typeof previousSelectionEnd === "number") {
+        nextFocusedField.setSelectionRange(previousSelectionStart, previousSelectionEnd);
       }
     }
   });
@@ -766,6 +1214,7 @@ const refreshSharedRoomStateAfterHallRefresh = () => {
 
   applySharedRoomState(latestRoomSnapshotValue || {});
 };
+
 const syncSharedRoomNow = async () => {
   if (!isSharedRoomMode() || !activeRoomRef) {
     return;
@@ -828,7 +1277,7 @@ const activateSharedRoom = (roomId, options = {}) => {
       const hasContent = Boolean(snapshot.val()) && (favoriteEntries.length > 0 || Object.keys(memoByHallKey).length > 0);
       setSourceStatus(
         hasContent
-          ? `${getSharedRoomLabel()}에 연결했습니다. 이 링크를 연 사람과 같은 즐겨찾기와 메모를 함께 보고 있습니다.`
+          ? `${getSharedRoomLabel()}에 연결했습니다. 이 링크를 연 사람과 같은 즐겨찾기, 체크리스트, 메모를 함께 보고 있습니다.`
           : `${getSharedRoomLabel()}이 비어 있습니다. 첫 즐겨찾기나 메모부터 함께 채워보세요.`,
         "is-success"
       );
@@ -868,6 +1317,8 @@ const saveShareSession = () => {
         sourceLabel: activeShareSessionLabel,
         favorites: favoriteEntries,
         memos: normalizeMemoMap(memoByHallKey),
+        checklistStates: checklistStateByHallKey,
+        checklistMemos: checklistMemoByHallKey,
       })
     );
   } catch (error) {
@@ -907,6 +1358,8 @@ const loadShareSession = () => {
       sourceLabel: String(parsedValue?.sourceLabel || "공유 링크").trim() || "공유 링크",
       favorites: normalizeFavoriteEntries(parsedValue?.favorites, hallLookup).entries,
       memos: normalizeMemoMap(parsedValue?.memos),
+      checklistStates: normalizeChecklistStateMap(parsedValue?.checklistStates),
+      checklistMemos: normalizeChecklistMemoMap(parsedValue?.checklistMemos),
     };
   } catch (error) {
     return null;
@@ -956,6 +1409,27 @@ const normalizeImportedMemoMap = (rawMemoMap, shareTokenLookup) => {
   }, {});
 };
 
+const normalizeImportedChecklistStateMap = (rawChecklistMap, shareTokenLookup) => {
+  if (!rawChecklistMap || typeof rawChecklistMap !== "object" || Array.isArray(rawChecklistMap)) {
+    return {};
+  }
+
+  return Object.entries(rawChecklistMap).reduce((accumulator, [reference, hallChecklistState]) => {
+    const normalizedChecklistState = normalizeChecklistItemState(hallChecklistState);
+    if (!Object.keys(normalizedChecklistState).length) {
+      return accumulator;
+    }
+
+    const hallFromToken = shareTokenLookup.get(String(reference || "").trim());
+    const checklistKey = hallFromToken ? buildHallKey(hallFromToken) : String(reference || "").trim();
+
+    if (checklistKey) {
+      accumulator[checklistKey] = normalizedChecklistState;
+    }
+    return accumulator;
+  }, {});
+};
+
 const normalizeImportedFavoriteReferences = (references, hallLookup, shareTokenLookup) => {
   const normalizedReferences = Array.isArray(references) ? references : [];
 
@@ -992,20 +1466,26 @@ const importSharedPayload = (payload, sourceLabel = "공유 링크") => {
     ? payload.favorites
     : Array.isArray(payload.f)
       ? payload.f
-    : Array.isArray(payload.favoriteEntries)
+      : Array.isArray(payload.favoriteEntries)
       ? payload.favoriteEntries
       : [];
   const importedMemosRaw = payload.memos ?? payload.memoByHallKey ?? payload.m ?? {};
+  const importedChecklistStateRaw = payload.checklists ?? payload.checklistByHallKey ?? payload.c ?? {};
+  const importedChecklistMemoRaw = payload.checklistMemos ?? payload.checklistMemoByHallKey ?? payload.cm ?? {};
   const normalizedFavorites = normalizeImportedFavoriteReferences(importedFavoritesRaw, hallLookup, shareTokenLookup);
   const normalizedMemos = normalizeImportedMemoMap(importedMemosRaw, shareTokenLookup);
+  const normalizedChecklistStates = normalizeImportedChecklistStateMap(importedChecklistStateRaw, shareTokenLookup);
+  const normalizedChecklistMemos = normalizeImportedMemoMap(importedChecklistMemoRaw, shareTokenLookup);
 
-  if (!normalizedFavorites.length && !Object.keys(normalizedMemos).length) {
-    throw new Error("공유 데이터 안에 불러올 즐겨찾기나 메모가 없습니다.");
+  if (!normalizedFavorites.length && !Object.keys(normalizedMemos).length && !Object.keys(normalizedChecklistStates).length && !Object.keys(normalizedChecklistMemos).length) {
+    throw new Error("공유 데이터 안에 불러올 즐겨찾기, 체크리스트, 메모가 없습니다.");
   }
 
   activeShareSessionLabel = sourceLabel;
   favoriteEntries = normalizedFavorites;
   memoByHallKey = normalizedMemos;
+  checklistStateByHallKey = normalizedChecklistStates;
+  checklistMemoByHallKey = normalizedChecklistMemos;
   saveShareSession();
   prepareShareUrl();
   update();
@@ -1112,8 +1592,8 @@ const copyShareLink = async () => {
 
       setSourceStatus(
         createdNewRoom
-          ? `${getSharedRoomLabel()}을 만들고 링크를 복사했습니다. 이 링크를 열면 같은 즐겨찾기와 메모를 함께 수정할 수 있습니다.`
-          : `${getSharedRoomLabel()} 링크를 복사했습니다. 이 링크를 연 사람과 같은 즐겨찾기와 메모를 함께 수정할 수 있습니다.`,
+          ? `${getSharedRoomLabel()}을 만들고 링크를 복사했습니다. 이 링크를 열면 같은 즐겨찾기, 체크리스트, 메모를 함께 수정할 수 있습니다.`
+          : `${getSharedRoomLabel()} 링크를 복사했습니다. 이 링크를 연 사람과 같은 즐겨찾기, 체크리스트, 메모를 함께 수정할 수 있습니다.`,
         "is-success"
       );
       prepareShareUrl();
@@ -1140,7 +1620,7 @@ const copyShareLink = async () => {
     }
 
     setSourceStatus(
-      `공유 링크를 복사했습니다. 즐겨찾기 ${favoriteEntries.length}개와 메모 ${Object.keys(memoByHallKey).length}건이 포함됐습니다.`,
+      `공유 링크를 복사했습니다. 즐겨찾기 ${favoriteEntries.length}개와 체크리스트/메모가 함께 포함됐습니다.`,
       "is-success"
     );
     prepareShareUrl();
@@ -1474,6 +1954,8 @@ const restoreShareSessionIfNeeded = () => {
   activeShareSessionLabel = savedSession.sourceLabel;
   favoriteEntries = savedSession.favorites;
   memoByHallKey = savedSession.memos;
+  checklistStateByHallKey = savedSession.checklistStates;
+  checklistMemoByHallKey = savedSession.checklistMemos;
   prepareShareUrl();
   setSourceStatus(`${activeShareSessionLabel} 임시본을 이 창에서 이어서 보고 있습니다.`, "is-success");
   return true;
@@ -1497,9 +1979,9 @@ const renderFavorites = (items, guestCount) => {
 
   if (!storedFavoriteCount) {
     favoriteSummary.textContent = isSharedRoomMode()
-      ? `${getSharedRoomLabel()}에 연결되어 있습니다. 이 링크를 연 사람끼리 같은 즐겨찾기와 메모를 함께 수정합니다.`
+      ? `${getSharedRoomLabel()}에 연결되어 있습니다. 이 링크를 연 사람끼리 같은 즐겨찾기, 체크리스트, 메모를 함께 수정합니다.`
       : activeShareSessionLabel
-        ? `${activeShareSessionLabel} 임시본입니다. 이 창의 변경 내용은 내 기본 목록에 자동 저장되지 않습니다.`
+        ? `${activeShareSessionLabel} 임시본입니다. 이 창의 체크리스트와 메모 변경 내용은 내 기본 목록에 자동 저장되지 않습니다.`
         : "별 버튼을 눌러 마음에 드는 웨딩홀을 따로 모아보세요.";
     favoriteList.innerHTML = `
       <div class="empty-state favorite-empty-state">
@@ -1511,9 +1993,9 @@ const renderFavorites = (items, guestCount) => {
   }
 
   favoriteSummary.textContent = isSharedRoomMode()
-    ? `${getSharedRoomLabel()}에 총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀이 담겨 있습니다. 이 링크를 받은 사람과 즐겨찾기와 메모를 함께 이어서 수정할 수 있습니다.`
+    ? `${getSharedRoomLabel()}에 총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀이 담겨 있습니다. 이 링크를 받은 사람과 즐겨찾기, 체크리스트, 메모를 함께 이어서 수정할 수 있습니다.`
     : activeShareSessionLabel
-      ? `${activeShareSessionLabel} 임시본입니다. 총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀과 메모를 이 창에서만 따로 보고 있습니다.`
+      ? `${activeShareSessionLabel} 임시본입니다. 총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀의 체크리스트와 메모를 이 창에서만 따로 보고 있습니다.`
       : `총 ${numberFormatter.format(storedFavoriteCount)}개 웨딩홀을 찜해두었습니다. 이후 데이터가 업데이트되어도 이 목록은 저장 당시 정보 기준으로 유지됩니다.`;
 
   favoriteList.innerHTML = items
@@ -1559,6 +2041,7 @@ const renderFavorites = (items, guestCount) => {
     `)
     .join("");
 };
+
 const renderCards = (items, guestCount) => {
   if (!items.length) {
     cardList.innerHTML = `
@@ -1679,6 +2162,242 @@ const renderStats = (items, guestCount) => {
     : "총비용 = 최소보증인원 x 식대 + 대관료 + 연출료 + 꽃장식";
 };
 
+const getChecklistProgress = (hallChecklistState = getChecklistStateForHallKey()) => {
+  const total = CONSULTATION_CHECKLIST_ITEM_IDS.size;
+  const completed = Array.from(CONSULTATION_CHECKLIST_ITEM_IDS).filter((itemId) => hallChecklistState[itemId]).length;
+  const remaining = Math.max(total - completed, 0);
+  const percentage = total ? Math.round((completed / total) * 100) : 0;
+
+  return { total, completed, remaining, percentage };
+};
+
+const renderChecklistHallList = (favoriteItems) => {
+  if (!checklistHallList) {
+    return;
+  }
+
+  if (!favoriteItems.length) {
+    checklistHallList.innerHTML = `
+      <div class="checklist-empty-state">
+        찜한 웨딩홀이 아직 없습니다.<br />
+        아래 웨딩홀 카드에서 별 버튼을 눌러 계약 체크리스트를 만들 홀을 먼저 담아주세요.
+      </div>
+    `;
+    return;
+  }
+
+  checklistHallList.innerHTML = favoriteItems
+    .map((hall) => {
+      const progress = getChecklistProgress(getChecklistStateForHallKey(hall.favoriteKey));
+      return `
+        <button
+          type="button"
+          class="checklist-hall-chip ${hall.favoriteKey === selectedChecklistHallKey ? "is-active" : ""}"
+          data-checklist-hall-key="${sanitizeText(hall.favoriteKey)}"
+        >
+          <span class="checklist-hall-chip-name">${sanitizeText(hall.name)}</span>
+          <span class="checklist-hall-chip-meta">${sanitizeText(hall.district || "지역 미입력")} · ${sanitizeText(hall.hallType || "홀 타입 미입력")}</span>
+          <span class="checklist-hall-chip-progress">${numberFormatter.format(progress.completed)}/${numberFormatter.format(progress.total)}개 체크 완료</span>
+        </button>
+      `;
+    })
+    .join("");
+};
+
+const updateChecklistSummary = (selectedHall, hallChecklistState) => {
+  if (!checklistCompletedCount || !checklistRemainingCount || !checklistTotalCount || !checklistProgressPercent || !checklistProgressText || !checklistProgressBar) {
+    return;
+  }
+
+  const progress = getChecklistProgress(hallChecklistState);
+  checklistCompletedCount.textContent = numberFormatter.format(progress.completed);
+  checklistRemainingCount.textContent = numberFormatter.format(progress.remaining);
+  checklistTotalCount.textContent = numberFormatter.format(progress.total);
+  checklistProgressPercent.textContent = `${progress.percentage}%`;
+  checklistProgressText.textContent = selectedHall
+    ? `${selectedHall.name}에서 총 ${numberFormatter.format(progress.total)}개 중 ${numberFormatter.format(progress.completed)}개 완료`
+    : "찜한 웨딩홀을 선택하면 홀별 진행률이 표시됩니다.";
+  checklistProgressBar.style.width = `${progress.percentage}%`;
+  if (checklistResetButton) {
+    checklistResetButton.disabled = !selectedHall || progress.completed === 0;
+  }
+};
+
+const renderChecklist = () => {
+  if (!checklistCategoryGrid) {
+    return;
+  }
+
+  const favoriteItems = getFavoriteHalls();
+  const selectedHall = getSelectedChecklistHall(favoriteItems);
+  renderChecklistHallList(favoriteItems);
+
+  if (!selectedHall) {
+    if (checklistSelectedHallName) {
+      checklistSelectedHallName.textContent = "찜한 웨딩홀을 먼저 추가해주세요";
+    }
+    if (checklistSelectedHallMeta) {
+      checklistSelectedHallMeta.textContent = "찜 목록의 홀만 계약 체크리스트 하위 목록에 자동으로 추가됩니다.";
+    }
+    if (consultationMemo) {
+      consultationMemo.value = "";
+      consultationMemo.disabled = true;
+      consultationMemo.placeholder = "찜한 웨딩홀을 먼저 추가하면 홀별 계약 메모를 저장할 수 있습니다.";
+    }
+
+    checklistCategoryGrid.innerHTML = `
+      <div class="empty-state">
+        아직 계약 체크리스트를 열 홀이 없습니다.<br />
+        웨딩홀 카드나 찜한 웨딩홀 목록에서 별 버튼을 눌러 먼저 체크할 홀을 선택해주세요.
+      </div>
+    `;
+    updateChecklistSummary(null, {});
+    return;
+  }
+
+  const hallChecklistState = getChecklistStateForHallKey(selectedHall.favoriteKey);
+  const hallProgress = getChecklistProgress(hallChecklistState);
+
+  if (checklistSelectedHallName) {
+    checklistSelectedHallName.textContent = selectedHall.name;
+  }
+  if (checklistSelectedHallMeta) {
+    checklistSelectedHallMeta.textContent = `${selectedHall.district || "지역 미입력"} · ${selectedHall.address || "주소 미입력"} · ${numberFormatter.format(hallProgress.completed)}/${numberFormatter.format(hallProgress.total)}개 체크 완료`;
+  }
+  if (consultationMemo) {
+    const nextChecklistMemo = getChecklistMemoForHallKey(selectedHall.favoriteKey);
+    if (consultationMemo.value !== nextChecklistMemo) {
+      consultationMemo.value = nextChecklistMemo;
+    }
+    consultationMemo.disabled = false;
+    consultationMemo.placeholder = `${selectedHall.name} 계약 메모를 적어두세요. 예: 무료 혜택은 별첨 견적서에 꼭 명시 요청`;
+  }
+
+  checklistCategoryGrid.innerHTML = CONSULTATION_CHECKLIST.map((category) => {
+    const completedCount = category.items.filter((item) => hallChecklistState[item.id]).length;
+    const isComplete = completedCount === category.items.length;
+
+    return `
+      <section class="checklist-category-card ${isComplete ? "is-complete" : ""}">
+        <div class="checklist-category-head">
+          <div class="checklist-category-copy">
+            <span class="checklist-category-eyebrow">${sanitizeText(category.eyebrow)}</span>
+            <h3>${sanitizeText(category.title)}</h3>
+            <p>${sanitizeText(category.description)}</p>
+          </div>
+          <strong class="checklist-category-count">${numberFormatter.format(completedCount)}/${numberFormatter.format(category.items.length)}</strong>
+        </div>
+
+        <div class="checklist-items">
+          ${category.items
+            .map((item) => {
+              const checked = hallChecklistState[item.id] === true;
+              return `
+                <label class="checklist-item ${checked ? "is-checked" : ""}" for="checklist-${sanitizeText(item.id)}">
+                  <input
+                    id="checklist-${sanitizeText(item.id)}"
+                    class="checklist-checkbox"
+                    type="checkbox"
+                    data-checklist-item="${sanitizeText(item.id)}"
+                    ${checked ? "checked" : ""}
+                  />
+                  <span class="checklist-item-text">${sanitizeText(item.text)}</span>
+                </label>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }).join("");
+
+  updateChecklistSummary(selectedHall, hallChecklistState);
+};
+
+const handleChecklistHallSelection = (event) => {
+  const nextHallButton = event.target.closest("[data-checklist-hall-key]");
+  if (!nextHallButton) {
+    return;
+  }
+
+  const nextHallKey = String(nextHallButton.dataset.checklistHallKey || "").trim();
+  if (!nextHallKey) {
+    return;
+  }
+
+  selectedChecklistHallKey = nextHallKey;
+  openChecklistModal(nextHallKey);
+};
+
+const handleChecklistModalClose = (event) => {
+  if (event.target.closest("[data-checklist-modal-close]")) {
+    closeChecklistModal();
+  }
+};
+
+const handleChecklistModalKeydown = (event) => {
+  if (event.key === "Escape" && isChecklistModalOpen) {
+    closeChecklistModal();
+  }
+};
+
+const handleChecklistChange = (event) => {
+  const checkbox = event.target.closest("[data-checklist-item]");
+  if (!checkbox) {
+    return;
+  }
+
+  const itemId = String(checkbox.dataset.checklistItem || "").trim();
+  if (!CONSULTATION_CHECKLIST_ITEM_IDS.has(itemId)) {
+    return;
+  }
+
+  const activeChecklistHall = getSelectedChecklistHall();
+  if (!activeChecklistHall) {
+    return;
+  }
+
+  const nextChecklistState = {
+    ...getChecklistStateForHallKey(activeChecklistHall.favoriteKey),
+    [itemId]: checkbox.checked,
+  };
+
+  if (!checkbox.checked) {
+    delete nextChecklistState[itemId];
+  }
+
+  updateChecklistStateForHallKey(activeChecklistHall.favoriteKey, nextChecklistState);
+  renderChecklist();
+};
+
+const handleChecklistMemoInput = (event) => {
+  const activeChecklistHall = getSelectedChecklistHall();
+  if (!activeChecklistHall) {
+    return;
+  }
+
+  updateChecklistMemoByHallKey(activeChecklistHall.favoriteKey, event.target.value);
+};
+
+const resetChecklist = () => {
+  const activeChecklistHall = getSelectedChecklistHall();
+  if (!activeChecklistHall) {
+    return;
+  }
+
+  const activeChecklistState = getChecklistStateForHallKey(activeChecklistHall.favoriteKey);
+  if (!Object.keys(activeChecklistState).length) {
+    return;
+  }
+
+  if (!window.confirm(`${activeChecklistHall.name}에서 체크한 계약 항목을 모두 해제할까요? 메모는 유지됩니다.`)) {
+    return;
+  }
+
+  updateChecklistStateForHallKey(activeChecklistHall.favoriteKey, {});
+  renderChecklist();
+};
+
 const update = () => {
   const filters = getFilters();
   const filtered = halls.filter((hall) => matchesFilters(hall, filters));
@@ -1688,6 +2407,7 @@ const update = () => {
   activeSummary.textContent = buildSummary(filters, sorted);
   renderStats(sorted, filters.guests);
   renderFavorites(favoriteItems, filters.guests);
+  renderChecklist();
   renderCards(sorted, filters.guests);
   renderTable(sorted, filters.guests);
 };
@@ -1712,9 +2432,11 @@ const restoreLocalDataView = () => {
   clearShareSession();
   favoriteEntries = loadFavoriteEntries();
   memoByHallKey = loadUserMemos();
+  checklistStateByHallKey = loadChecklistState();
+  checklistMemoByHallKey = loadChecklistMemo();
   prepareShareUrl();
   update();
-  setSourceStatus("내 기기에 저장된 기본 즐겨찾기와 메모로 돌아왔습니다.", "is-success");
+  setSourceStatus("내 기기에 저장된 기본 즐겨찾기, 체크리스트, 메모로 돌아왔습니다.", "is-success");
 };
 
 const setSourceStatus = (message, type = "") => {
@@ -2098,23 +2820,34 @@ updateRefreshButton?.addEventListener("click", applyPendingUpdate);
 updateDismissButton?.addEventListener("click", hideUpdateBanner);
 copyShareLinkButton?.addEventListener("click", copyShareLink);
 restoreLocalDataButton?.addEventListener("click", restoreLocalDataView);
+checklistResetButton?.addEventListener("click", resetChecklist);
+checklistHallList?.addEventListener("click", handleChecklistHallSelection);
+checklistModal?.addEventListener("click", handleChecklistModalClose);
+checklistModalCloseButton?.addEventListener("click", closeChecklistModal);
 cardList?.addEventListener("click", handleFavoriteButtonClick);
 resultTableBody?.addEventListener("click", handleFavoriteButtonClick);
 favoriteList?.addEventListener("click", handleFavoriteButtonClick);
+checklistCategoryGrid?.addEventListener("change", handleChecklistChange);
 cardList?.addEventListener("input", handleMemoInput);
 favoriteList?.addEventListener("input", handleMemoInput);
+consultationMemo?.addEventListener("input", handleChecklistMemoInput);
 clearFavoritesButton?.addEventListener("click", clearAllFavorites);
 window.addEventListener("hashchange", () => {
   applySharedLinkFromUrl();
 });
+window.addEventListener("keydown", handleChecklistModalKeydown);
 
 window.addEventListener("weddingpick:update-ready", (event) => {
   const registration = event.detail?.registration ?? null;
   showUpdateBanner("새 버전이 준비됐어요. 최신 화면과 데이터를 보려면 새로고침하세요.", registration);
 });
 
+checklistStateByHallKey = loadChecklistState();
+checklistMemoByHallKey = loadChecklistMemo();
+
 rebuildDistrictOptions();
 restoreShareSessionIfNeeded();
+prepareShareUrl();
 update();
 
 handleBuiltinReload();
